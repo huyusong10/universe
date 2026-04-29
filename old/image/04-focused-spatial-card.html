@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universe OS - Focused View with Spatial Card</title>
+    <link rel="stylesheet" href="./assets/observatory-ui.css">
+</head>
+<body>
+    <canvas id="sceneCanvas" class="scene-canvas" aria-hidden="true"></canvas>
+    <div class="scene-scrim"></div>
+
+    <main class="page-shell">
+        <div class="page-grid page-grid--split">
+            <section class="hero-copy" style="display: flex; flex-direction: column; justify-content: flex-end; min-height: calc(100vh - 4rem);">
+                <div class="pill" style="width: fit-content;">Focused target lock</div>
+                <p class="eyebrow" style="margin-top: 1.25rem;">Spatial Card // Near-Field</p>
+                <h1 class="hero-title display-serif" style="font-size: clamp(2.8rem, 6.4vw, 4.8rem);">Let the star carry the frame and let the reader dock beside it.</h1>
+                <p class="lede">The focused view keeps the target body large and readable while the card stays narrow, layered, and structurally stable. We do not center a modal over the sky; we attach a reader to the observation band.</p>
+                <div class="toolbar" style="margin-top: 1.5rem;">
+                    <div class="pill">Consensus Protocols</div>
+                    <div class="pill">3 connections</div>
+                    <div class="pill">Open in Quartz</div>
+                </div>
+            </section>
+
+            <section class="glass-panel" style="padding: 1rem 1.1rem; max-height: calc(100vh - 2rem); overflow: auto;">
+                <div class="panel-stack">
+                    <div class="panel-header">
+                        <div>
+                            <p class="mini-label">Yellow Star // Stable</p>
+                            <h2 style="margin: 0.45rem 0 0; font-size: 1.32rem;">Consensus Protocols</h2>
+                        </div>
+                        <button class="ghost-button">Close</button>
+                    </div>
+
+                    <div class="metrics">
+                        <div class="metric-card">
+                            <span class="mini-label">Connections</span>
+                            <span class="metric-value">3</span>
+                            <span class="muted">Paxos, Raft, and BFT remain in local view.</span>
+                        </div>
+                        <div class="metric-card">
+                            <span class="mini-label">Hop Depth</span>
+                            <span class="metric-value">2</span>
+                            <span class="muted">Compact neighborhood before expanding the graph.</span>
+                        </div>
+                    </div>
+
+                    <article class="glass-card" style="padding: 1rem 1.1rem;">
+                        <p class="muted" style="margin-top: 0;">In distributed systems, consensus protocols provide the machinery for many machines to commit to one sequence of truth. The framing here assumes the body itself holds the stage while the explanatory layer remains docked and subordinate.</p>
+                        <p class="muted">Paxos optimizes for safety and proofability. Raft optimizes for separability and operational clarity. Byzantine families expand the threat model but raise the cost. The interface mirrors that mental model: one canonical body, then one narrow reading surface.</p>
+                    </article>
+
+                    <div class="list-panel">
+                        <div class="list-item"><span class="list-index">P</span><div><strong>Paxos</strong><div class="muted">Safety-first family with high conceptual overhead.</div></div></div>
+                        <div class="list-item"><span class="list-index">R</span><div><strong>Raft</strong><div class="muted">Operationally legible leader-based consensus.</div></div></div>
+                        <div class="list-item"><span class="list-index">B</span><div><strong>PBFT</strong><div class="muted">Adversarial fault tolerance with higher coordination cost.</div></div></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <div class="runtime-corner">
+        <div class="runtime-pill"><span id="runtimeLabel">Initializing WebGPU observatory...</span></div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.webgpu.min.js",
+                "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.webgpu.min.js",
+                "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.tsl.min.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script type="module">
+        import { bootObservatoryStage } from "./assets/observatory-stage.js";
+
+        bootObservatoryStage({
+            canvas: document.getElementById("sceneCanvas"),
+            preset: "focus",
+            statusEl: document.getElementById("runtimeLabel")
+        });
+    </script>
+</body>
+</html>

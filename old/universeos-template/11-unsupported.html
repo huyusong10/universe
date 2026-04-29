@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universe OS - Unsupported Environment</title>
+    <link rel="stylesheet" href="./assets/observatory-ui.css">
+    <style>
+        .unsupported-shell {
+            min-height: calc(100vh - 2rem);
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(18rem, 24rem);
+            align-items: center;
+            gap: clamp(1rem, 2vw, 2rem);
+        }
+
+        .unsupported-panel {
+            padding: 1.15rem 1.2rem;
+        }
+
+        .unsupported-ring {
+            width: min(21rem, 52vw);
+            aspect-ratio: 1;
+            border-radius: 50%;
+            background:
+                radial-gradient(circle at 50% 50%, rgba(255, 230, 188, 0.16), rgba(255, 230, 188, 0.04) 24%, transparent 48%),
+                radial-gradient(circle at 52% 50%, rgba(124, 166, 255, 0.14), transparent 58%);
+            border: 1px solid rgba(255, 219, 150, 0.12);
+            box-shadow: 0 0 120px rgba(255, 200, 108, 0.12);
+            position: relative;
+        }
+
+        .unsupported-ring::before,
+        .unsupported-ring::after {
+            content: "";
+            position: absolute;
+            inset: 16%;
+            border-radius: 50%;
+            border: 1px solid rgba(149, 172, 231, 0.12);
+        }
+
+        .unsupported-ring::after {
+            inset: 30%;
+            border-color: rgba(255, 219, 150, 0.18);
+        }
+
+        @media (max-width: 980px) {
+            .unsupported-shell {
+                grid-template-columns: 1fr;
+                align-items: start;
+            }
+
+            .unsupported-ring {
+                width: min(16rem, 74vw);
+            }
+        }
+    </style>
+</head>
+<body class="body-scroll">
+    <div class="scene-scrim scene-scrim--center"></div>
+
+    <main class="page-shell">
+        <section class="unsupported-shell">
+            <section class="hero-copy">
+                <p class="eyebrow">Universe OS // Capability Gate</p>
+                <h1 class="hero-title display-serif">This observatory opens on desktop-class hardware.</h1>
+                <p class="lede">Universe OS is intentionally built around a high-capability, desktop-first WebGPU runtime. If the device cannot support the observatory baseline, the product should say so clearly instead of pretending a reduced shell is the full experience.</p>
+
+                <div class="toolbar" style="margin-top: 1.25rem;">
+                    <a class="primary-button" href="./index.html">Open Template Hub</a>
+                    <a class="ghost-button" href="./07-academy.html">View Academy Pattern</a>
+                </div>
+
+                <div class="metrics" style="margin-top: 1.3rem; max-width: 40rem;">
+                    <article class="metric-card">
+                        <span class="mini-label">Gate Reason</span>
+                        <span class="metric-value">Desktop-first</span>
+                        <span class="muted">Phone-sized screens and low-graphics browsers should not receive the full observatory shell.</span>
+                    </article>
+                    <article class="metric-card">
+                        <span class="mini-label">Fallback Tone</span>
+                        <span class="metric-value">Intentional</span>
+                        <span class="muted">The unsupported state still feels like part of the universe, not a broken error page.</span>
+                    </article>
+                </div>
+            </section>
+
+            <aside class="glass-panel unsupported-panel" data-collapsible-panel>
+                <div class="panel-header" style="margin-bottom: 1rem;">
+                    <div>
+                        <p class="mini-label">Required Baseline</p>
+                        <h2 style="margin: 0.45rem 0 0; font-size: 1.2rem;">Universe OS capability contract</h2>
+                    </div>
+                    <button class="collapse-toggle" type="button" data-panel-toggle><span data-panel-toggle-text>Collapse</span></button>
+                </div>
+                <div data-panel-body>
+                <div class="panel-stack">
+                    <div class="unsupported-ring" aria-hidden="true"></div>
+
+                    <article class="glass-card" style="padding: 1rem 1.05rem;">
+                        <strong>Expected baseline</strong>
+                        <div class="list-panel" style="margin-top: 0.8rem;">
+                            <div class="list-item">
+                                <span class="list-index">1</span>
+                                <div><strong>WebGPU available</strong><div class="muted">The scene is designed around `three/webgpu`, not a downgraded poster mode.</div></div>
+                            </div>
+                            <div class="list-item">
+                                <span class="list-index">2</span>
+                                <div><strong>Worker + OffscreenCanvas path</strong><div class="muted">The observatory runtime assumes a dedicated rendering lane.</div></div>
+                            </div>
+                            <div class="list-item">
+                                <span class="list-index">3</span>
+                                <div><strong>Desktop-scale viewport</strong><div class="muted">Survey, spatial reading, and HUD hierarchy depend on wide compositions.</div></div>
+                            </div>
+                        </div>
+                    </article>
+
+                    <div class="status-inline">
+                        <div class="pill">WebGPU</div>
+                        <div class="pill">Worker-first</div>
+                        <div class="pill">Desktop required</div>
+                    </div>
+                </div>
+                </div>
+            </aside>
+        </section>
+    </main>
+
+    <script type="module">
+        import { bootCollapsiblePanels } from "./assets/panel-collapse.js";
+
+        bootCollapsiblePanels();
+    </script>
+</body>
+</html>

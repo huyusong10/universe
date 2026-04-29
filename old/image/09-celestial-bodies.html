@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universe OS - Celestial Bodies</title>
+    <link rel="stylesheet" href="./assets/observatory-ui.css">
+</head>
+<body class="body-scroll">
+    <canvas id="sceneCanvas" class="scene-canvas" aria-hidden="true"></canvas>
+    <div class="scene-scrim scene-scrim--center"></div>
+
+    <main class="page-shell" style="display: grid; align-content: start; gap: 2rem;">
+        <section class="hero-copy captive-width" style="padding-top: 0.5rem;">
+            <p class="eyebrow">Celestial Taxonomy</p>
+            <h1 class="hero-title display-serif" style="font-size: clamp(2.8rem, 6vw, 4.8rem);">Five body types, one cosmic grammar.</h1>
+            <p class="lede">The universe should not read as “many identical nodes with different labels.” Each public knowledge class gets a stable celestial skeleton, a distinct thermal signature, and a consistent reading expectation.</p>
+            <div class="toolbar" style="margin-top: 1.25rem;">
+                <div class="pill">Stable stars</div>
+                <div class="pill">Emergent stars</div>
+                <div class="pill">Problem constellations</div>
+                <div class="pill">Gravity basins</div>
+                <div class="pill">Navigation relics</div>
+            </div>
+        </section>
+
+        <section class="card-grid">
+            <article class="glass-card template-card" style="display: grid; gap: 1rem;">
+                <div class="status-inline">
+                    <div class="orb-swatch" style="background: radial-gradient(circle at 35% 32%, rgba(255, 255, 255, 0.96) 0%, rgba(255, 243, 214, 0.82) 22%, rgba(255, 194, 113, 0.42) 58%, rgba(255, 194, 113, 0.02) 100%);"></div>
+                    <div>
+                        <p class="mini-label">Stable Knowledge</p>
+                        <h2 style="margin: 0.45rem 0 0; font-size: 1.18rem;">Mature star</h2>
+                    </div>
+                </div>
+                <p class="muted">Canonical, well-shaped knowledge bodies. They hold the scene without shouting and become the default focus targets for near-field reading.</p>
+                <div class="pill">Warm palette-shift core</div>
+            </article>
+
+            <article class="glass-card template-card" style="display: grid; gap: 1rem;">
+                <div class="status-inline">
+                    <div class="orb-swatch" style="background: radial-gradient(circle at 35% 32%, rgba(255, 255, 255, 0.96) 0%, rgba(223, 241, 255, 0.82) 22%, rgba(140, 197, 255, 0.4) 56%, rgba(140, 197, 255, 0.02) 100%);"></div>
+                    <div>
+                        <p class="mini-label">Emergent Knowledge</p>
+                        <h2 style="margin: 0.45rem 0 0; font-size: 1.18rem;">Hot proto-star</h2>
+                    </div>
+                </div>
+                <p class="muted">Forming bodies stay brighter, bluer, and less settled. The shell suggests activity before the interface tells you the knowledge is still evolving.</p>
+                <div class="pill">Cool spectral profile</div>
+            </article>
+
+            <article class="glass-card template-card" style="display: grid; gap: 1rem;">
+                <div class="status-inline">
+                    <div class="orb-swatch" style="background: radial-gradient(circle at 40% 40%, rgba(255, 232, 208, 0.38) 0%, rgba(182, 125, 96, 0.32) 26%, rgba(60, 24, 24, 0.78) 72%, rgba(12, 4, 8, 1) 100%); box-shadow: 0 0 34px rgba(240, 128, 84, 0.18);"></div>
+                    <div>
+                        <p class="mini-label">Problem Signals</p>
+                        <h2 style="margin: 0.45rem 0 0; font-size: 1.18rem;">Anomaly constellation</h2>
+                    </div>
+                </div>
+                <p class="muted">Questions and inconsistencies should cluster as signals, not masquerade as stable stars. They feel sparse, fractured, and diagnostically sharp.</p>
+                <div class="pill">Fragmented beacon field</div>
+            </article>
+
+            <article class="glass-card template-card" style="display: grid; gap: 1rem;">
+                <div class="status-inline">
+                    <div class="orb-swatch" style="background: radial-gradient(circle at 50% 46%, rgba(104, 124, 188, 0.28) 0%, rgba(58, 78, 132, 0.24) 24%, rgba(12, 18, 36, 0.86) 68%, rgba(5, 8, 16, 1) 100%); box-shadow: 0 0 42px rgba(96, 126, 204, 0.16);"></div>
+                    <div>
+                        <p class="mini-label">Knowledge Basin</p>
+                        <h2 style="margin: 0.45rem 0 0; font-size: 1.18rem;">Gravity well</h2>
+                    </div>
+                </div>
+                <p class="muted">Basins are low-presence spatial fields. They shape adjacency and reading neighborhoods, but they never get to dominate the first frame as opaque discs.</p>
+                <div class="pill">Low-opacity field only</div>
+            </article>
+
+            <article class="glass-card template-card" style="display: grid; gap: 1rem;">
+                <div class="status-inline">
+                    <div class="orb-swatch" style="background: radial-gradient(circle at 50% 50%, rgba(255, 223, 172, 0.18) 0%, rgba(145, 166, 219, 0.12) 22%, rgba(12, 18, 36, 0.9) 70%, rgba(5, 8, 16, 1) 100%); border-radius: 1.25rem; box-shadow: 0 0 30px rgba(180, 198, 255, 0.12);"></div>
+                    <div>
+                        <p class="mini-label">Navigation Structure</p>
+                        <h2 style="margin: 0.45rem 0 0; font-size: 1.18rem;">Ancient geometry</h2>
+                    </div>
+                </div>
+                <p class="muted">Relics and guide structures are deliberately geometric so the eye can separate “route and tooling” from “knowledge body” at a glance.</p>
+                <div class="pill">Non-orbital silhouette</div>
+            </article>
+        </section>
+    </main>
+
+    <div class="runtime-corner">
+        <div class="runtime-pill"><span id="runtimeLabel">Initializing WebGPU observatory...</span></div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.webgpu.min.js",
+                "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.webgpu.min.js",
+                "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.tsl.min.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script type="module">
+        import { bootObservatoryStage } from "./assets/observatory-stage.js";
+
+        bootObservatoryStage({
+            canvas: document.getElementById("sceneCanvas"),
+            preset: "bodies",
+            statusEl: document.getElementById("runtimeLabel")
+        });
+    </script>
+</body>
+</html>

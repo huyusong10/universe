@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universe OS - Luminous Stellar Atlas</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="./assets/observatory-ui.css">
+    <style>
+        :root {
+            color-scheme: dark;
+            --hud-line: rgba(146, 170, 226, 0.18);
+            --hud-line-bright: rgba(255, 219, 154, 0.5);
+            --hud-panel: rgba(7, 11, 24, 0.72);
+            --hud-panel-soft: rgba(11, 17, 35, 0.52);
+            --hud-text: rgba(248, 242, 232, 0.96);
+            --hud-soft: rgba(205, 217, 248, 0.72);
+            --hud-dim: rgba(148, 164, 204, 0.56);
+            --hud-gold: rgba(255, 215, 145, 0.98);
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background: #01030a;
+        }
+
+        body {
+            color: var(--hud-text);
+            cursor: grab;
+        }
+
+        body.is-orbiting {
+            cursor: grabbing;
+        }
+
+        .scale-canvas {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            z-index: 0;
+            touch-action: none;
+            outline: none;
+        }
+
+        .scale-vignette {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+            pointer-events: none;
+            background:
+                radial-gradient(circle at 50% 48%, rgba(0, 0, 0, 0) 0%, rgba(2, 5, 14, 0.025) 56%, rgba(0, 2, 8, 0.24) 100%),
+                linear-gradient(90deg, rgba(1, 3, 8, 0.08), rgba(1, 3, 8, 0.01) 24%, rgba(1, 3, 8, 0) 60%, rgba(1, 3, 8, 0.08));
+        }
+
+        .scale-shell {
+            position: fixed;
+            inset: 0;
+            z-index: 3;
+            pointer-events: none;
+        }
+
+        .scale-shell > * {
+            pointer-events: auto;
+        }
+
+        .unsupported-panel {
+            border: 1px solid var(--hud-line);
+            background:
+                linear-gradient(180deg, var(--hud-panel), rgba(4, 8, 18, 0.38)),
+                radial-gradient(circle at 14% 0%, rgba(132, 160, 242, 0.12), transparent 32%);
+            box-shadow:
+                inset 0 1px 0 rgba(255, 255, 255, 0.05),
+                0 18px 64px rgba(0, 0, 0, 0.28);
+        }
+
+        .target-panel .eyebrow {
+            margin: 0;
+            color: rgba(180, 198, 246, 0.56);
+            text-shadow: 0 0 18px rgba(9, 14, 28, 0.72);
+        }
+
+        .target-stat {
+            display: grid;
+            gap: 0.12rem;
+            min-width: 0;
+            padding: 0;
+        }
+
+        .target-stat span {
+            color: rgba(148, 164, 204, 0.48);
+            font-size: 0.66rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+
+        .target-stat strong {
+            overflow: hidden;
+            color: rgba(248, 242, 232, 0.88);
+            font-size: 0.96rem;
+            line-height: 1.05;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            text-shadow: 0 0 16px rgba(0, 0, 0, 0.72);
+        }
+
+        .target-panel {
+            position: fixed;
+            left: clamp(0.9rem, 1.8vw, 1.4rem);
+            top: 50%;
+            width: min(23.5rem, calc(100vw - 7.5rem));
+            display: grid;
+            gap: 0.72rem;
+            padding: 0.2rem 0 0.2rem 1rem;
+            border-left: 1px solid rgba(255, 215, 145, 0.32);
+            background: linear-gradient(90deg, rgba(1, 4, 12, 0.34), rgba(1, 4, 12, 0.08) 42%, transparent);
+            opacity: 0;
+            transform: translate(-1.2rem, -50%);
+            transition: opacity 300ms ease, transform 360ms cubic-bezier(0.2, 0.8, 0.2, 1);
+            pointer-events: none;
+        }
+
+        body.is-inspecting-target .target-panel {
+            opacity: 1;
+            transform: translate(0, -50%);
+            pointer-events: auto;
+        }
+
+        .target-panel h2 {
+            margin: 0;
+            color: var(--hud-text);
+            font-size: clamp(2.28rem, 3.4vw, 3.55rem);
+            line-height: 0.9;
+            letter-spacing: -0.03em;
+            text-shadow: 0 0 26px rgba(0, 0, 0, 0.82);
+        }
+
+        .target-panel p {
+            margin: 0;
+            max-width: 22rem;
+            color: rgba(205, 217, 248, 0.68);
+            font-size: 0.96rem;
+            line-height: 1.58;
+            text-shadow: 0 0 18px rgba(0, 0, 0, 0.82);
+        }
+
+        .target-class {
+            color: var(--hud-gold);
+            font-size: 0.86rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+        }
+
+        .target-stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.7rem 1.05rem;
+            max-width: 22rem;
+        }
+
+        .runtime-line {
+            display: none;
+            gap: 0.3rem;
+            padding-top: 0.12rem;
+        }
+
+        body.is-debug-observatory .runtime-line {
+            display: grid;
+        }
+
+        .runtime-line strong {
+            color: var(--hud-gold);
+            font-size: 0.84rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        .runtime-line span {
+            color: var(--hud-dim);
+            font-size: 0.84rem;
+            line-height: 1.42;
+        }
+
+        .scale-rail-panel {
+            position: fixed;
+            right: clamp(0.7rem, 1.3vw, 1.1rem);
+            top: 50%;
+            width: clamp(2.65rem, 3.4vw, 3.2rem);
+            height: min(72vh, 32rem);
+            transform: translateY(-50%);
+        }
+
+        .scale-rail-chrome {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            min-height: 25rem;
+            padding: 0.45rem 0 0.44rem;
+            display: grid;
+            justify-items: center;
+            opacity: 0.42;
+            transition: opacity 220ms ease, transform 220ms ease;
+        }
+
+        .scale-rail-panel:hover .scale-rail-chrome,
+        body.is-scale-active .scale-rail-chrome,
+        body.is-orbiting .scale-rail-chrome {
+            opacity: 0.9;
+        }
+
+        .scale-rail-meta {
+            display: grid;
+            gap: 0.25rem;
+            justify-items: center;
+            width: 100%;
+        }
+
+        .mini-label {
+            display: none;
+        }
+
+        .scale-value {
+            color: rgba(248, 242, 232, 0.74);
+            font-size: 0.92rem;
+            line-height: 1;
+            font-weight: 600;
+            text-shadow: 0 0 16px rgba(255, 204, 126, 0.22);
+        }
+
+        .scale-rail {
+            position: relative;
+            width: 100%;
+            flex: 1;
+            align-self: stretch;
+            display: grid;
+            justify-items: center;
+            min-height: 20rem;
+            margin: 0.48rem 0 0.2rem;
+            cursor: ns-resize;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .scale-track,
+        .scale-fill {
+            position: absolute;
+            top: 1.1rem;
+            bottom: 1.1rem;
+            left: 50%;
+            width: 1px;
+            transform: translateX(-50%);
+            border-radius: 999px;
+        }
+
+        .scale-track {
+            background: linear-gradient(180deg, rgba(204, 220, 255, 0.12), rgba(128, 150, 208, 0.18) 44%, rgba(255, 212, 146, 0.18));
+        }
+
+        .scale-fill {
+            top: var(--fill-start, 0%);
+            background: linear-gradient(180deg, rgba(255, 246, 229, 0.72), rgba(255, 216, 154, 0.78) 68%, rgba(255, 174, 76, 0.58));
+            box-shadow: 0 0 18px rgba(255, 196, 110, 0.24);
+        }
+
+        .scale-thumb {
+            position: absolute;
+            left: 50%;
+            top: var(--thumb-top, 0%);
+            width: 0.82rem;
+            height: 0.82rem;
+            border-radius: 999px;
+            transform: translate(-50%, -50%);
+            background: radial-gradient(circle at 35% 35%, #fff 0%, #ffeed0 36%, #ffcd84 72%, #ffa952 100%);
+            box-shadow:
+                0 0 0 0.16rem rgba(255, 214, 154, 0.08),
+                0 0 18px rgba(255, 199, 122, 0.42);
+        }
+
+        .scale-stage-labels {
+            position: absolute;
+            inset: 1.1rem 0;
+            pointer-events: none;
+        }
+
+        .scale-stage-label {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 0;
+            color: rgba(214, 224, 248, 0.42);
+            font-size: 0.5rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            white-space: nowrap;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.72);
+        }
+
+        .scale-stage-label[data-pos="0"] {
+            top: 0;
+        }
+
+        .scale-stage-label[data-pos="32"] {
+            top: calc(32% - 0.75rem);
+        }
+
+        .scale-stage-label[data-pos="66"] {
+            top: calc(66% - 0.75rem);
+        }
+
+        .scale-stage-label[data-pos="100"] {
+            bottom: 0;
+        }
+
+        .debug-panel {
+            position: fixed;
+            left: clamp(0.8rem, 1.4vw, 1.2rem);
+            bottom: clamp(0.8rem, 1.4vw, 1.2rem);
+            display: none;
+            max-width: min(28rem, calc(100vw - 6rem));
+            padding: 0;
+            color: rgba(198, 214, 248, 0.44);
+            font-size: 0.76rem;
+            line-height: 1.35;
+            text-shadow: 0 0 14px rgba(0, 0, 0, 0.82);
+        }
+
+        body.is-debug-observatory .debug-panel {
+            display: block;
+        }
+
+        .interaction-toast {
+            position: fixed;
+            left: 50%;
+            bottom: clamp(1rem, 2vw, 1.6rem);
+            max-width: min(28rem, calc(100vw - 7rem));
+            padding: 0;
+            color: rgba(218, 228, 255, 0.48);
+            font-size: 0.78rem;
+            line-height: 1.3;
+            text-align: center;
+            transform: translateX(-50%);
+            transition: opacity 260ms ease, transform 260ms ease, visibility 260ms ease;
+            text-shadow: 0 0 16px rgba(0, 0, 0, 0.86);
+        }
+
+        body.has-user-input .interaction-toast,
+        body.is-inspecting-target .interaction-toast {
+            opacity: 0;
+            visibility: hidden;
+            transform: translate(-50%, 0.4rem);
+            pointer-events: none;
+        }
+
+        body.has-hover-target:not(.is-orbiting) {
+            cursor: pointer;
+        }
+
+        .unsupported-panel {
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            z-index: 6;
+            display: none;
+            width: min(34rem, calc(100vw - 2rem));
+            padding: 1rem;
+            border-radius: 1.2rem;
+            transform: translate(-50%, -50%);
+        }
+
+        .unsupported-panel h2 {
+            margin: 0;
+            color: var(--hud-text);
+            font-size: 1.45rem;
+        }
+
+        .unsupported-panel p {
+            margin: 0.65rem 0 0;
+            color: var(--hud-soft);
+            line-height: 1.55;
+        }
+
+        body.is-unsupported .unsupported-panel {
+            display: block;
+        }
+
+        body.is-unsupported .scale-shell {
+            opacity: 0.18;
+            pointer-events: none;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 8;
+            display: grid;
+            place-items: center;
+            background:
+                radial-gradient(circle at 50% 48%, rgba(17, 27, 56, 0.28), transparent 34%),
+                #01030a;
+            color: rgba(232, 239, 255, 0.86);
+            transition: opacity 360ms ease, visibility 360ms ease;
+        }
+
+        body.has-first-frame .loading-overlay,
+        body.is-unsupported .loading-overlay {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        .loading-card {
+            width: min(28rem, calc(100vw - 3rem));
+            display: grid;
+            gap: 0.7rem;
+        }
+
+        .loading-card .eyebrow {
+            margin: 0;
+            color: rgba(170, 190, 238, 0.68);
+            font-size: 0.68rem;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+        }
+
+        .loading-card strong {
+            color: rgba(248, 242, 232, 0.92);
+            font-size: clamp(1.3rem, 3vw, 2.2rem);
+            line-height: 1;
+        }
+
+        .loading-track {
+            position: relative;
+            height: 2px;
+            overflow: hidden;
+            border-radius: 999px;
+            background: rgba(130, 154, 212, 0.18);
+        }
+
+        .loading-fill {
+            position: absolute;
+            inset: 0 auto 0 0;
+            width: calc(var(--loading-progress, 0.08) * 100%);
+            border-radius: inherit;
+            background: linear-gradient(90deg, rgba(148, 176, 255, 0.48), rgba(255, 219, 154, 0.82));
+            transition: width 220ms ease;
+        }
+
+        .loading-detail {
+            margin: 0;
+            color: rgba(182, 198, 236, 0.66);
+            font-size: 0.78rem;
+            line-height: 1.45;
+        }
+
+        @media (max-width: 1120px) {
+            .target-panel {
+                max-width: 22rem;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .target-panel {
+                left: 0.75rem;
+                top: auto;
+                bottom: 0.75rem;
+                width: min(22rem, calc(100vw - 5.8rem));
+                max-width: none;
+                gap: 0.52rem;
+                padding: 0.1rem 0 0.1rem 0.82rem;
+                border-left-color: rgba(255, 215, 145, 0.26);
+                background: linear-gradient(0deg, rgba(1, 4, 12, 0.34), rgba(1, 4, 12, 0.12) 58%, transparent);
+                transform: translateY(calc(100% + 1rem));
+            }
+
+            body.is-inspecting-target .target-panel {
+                transform: translateY(0);
+            }
+
+            .target-panel h2 {
+                font-size: clamp(1.75rem, 9vw, 2.3rem);
+            }
+
+            .target-panel p {
+                font-size: 0.82rem;
+                line-height: 1.42;
+            }
+
+            .target-stats {
+                gap: 0.5rem 0.78rem;
+            }
+
+            .target-stat {
+                padding: 0;
+            }
+
+            .scale-rail-panel {
+                width: 3.25rem;
+                height: min(68vh, 29rem);
+            }
+
+        }
+    </style>
+</head>
+<body class="is-loading">
+    <canvas id="scaleCanvas" class="scale-canvas" aria-label="Interactive WebGPU luminous stellar atlas"></canvas>
+    <div class="scale-vignette" aria-hidden="true"></div>
+
+    <section class="loading-overlay" aria-live="polite" aria-label="Loading luminous stellar atlas">
+        <div class="loading-card">
+            <p class="eyebrow">Universe OS // Luminous Stellar Atlas</p>
+            <strong>Preparing luminous atlas</strong>
+            <div class="loading-track" aria-hidden="true">
+                <div class="loading-fill" data-loading-fill></div>
+            </div>
+            <p class="loading-detail" data-loading-detail>Starting WebGPU luminous atlas</p>
+        </div>
+    </section>
+
+    <main class="scale-shell">
+        <aside class="target-panel" aria-live="polite">
+            <p class="eyebrow">Stellar readout</p>
+            <h2 class="display-serif" data-target-name>Helios Archive</h2>
+            <span class="target-class" data-target-class>G2 V</span>
+            <p data-target-summary>A warm main-sequence anchor for stable knowledge, close reading, and surface-scale inspection.</p>
+            <div class="target-stats">
+                <article class="target-stat">
+                    <span>Spectrum</span>
+                    <strong data-target-spectrum>G2 V</strong>
+                </article>
+                <article class="target-stat">
+                    <span>Radius</span>
+                    <strong data-target-radius>1.00 R</strong>
+                </article>
+                <article class="target-stat">
+                    <span>Map layer</span>
+                    <strong data-regime>Initializing</strong>
+                </article>
+                <article class="target-stat">
+                    <span>Stability</span>
+                    <strong data-target-stability>Calm</strong>
+                </article>
+            </div>
+            <div class="runtime-line">
+                <strong data-runtime-state>Initializing</strong>
+                <span data-runtime-detail>Dedicated Worker + OffscreenCanvas + three/webgpu</span>
+            </div>
+        </aside>
+
+        <aside class="scale-rail-panel" aria-label="Luminous atlas scale navigator">
+            <div class="scale-rail-chrome">
+                <div class="scale-rail-meta">
+                <p class="mini-label">Atlas scale</p>
+                    <strong class="scale-value" data-scale-value>100</strong>
+                </div>
+
+                <div class="scale-rail" data-scale-rail tabindex="0" role="slider" aria-label="Luminous atlas scale" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100">
+                    <div class="scale-track"></div>
+                    <div class="scale-fill" data-scale-fill></div>
+                    <div class="scale-stage-labels" aria-hidden="true">
+                        <span class="scale-stage-label" data-pos="0">Deep</span>
+                        <span class="scale-stage-label" data-pos="32">Cluster</span>
+                        <span class="scale-stage-label" data-pos="66">Approach</span>
+                        <span class="scale-stage-label" data-pos="100">Surface</span>
+                    </div>
+                    <div class="scale-thumb" data-scale-thumb></div>
+                </div>
+            </div>
+        </aside>
+
+        <aside class="debug-panel" aria-live="polite">
+            <strong data-regime>Initializing</strong>
+            <span> · </span>
+            <span data-camera-distance>40k ly</span>
+            <span> · </span>
+            <span data-runtime-detail>Dedicated Worker + OffscreenCanvas + three/webgpu</span>
+        </aside>
+
+        <p class="interaction-toast" data-immersive-hint>Scroll to scale. Drag to survey. Click a luminous star to inspect.</p>
+    </main>
+
+    <section class="unsupported-panel" role="alert">
+        <h2 class="display-serif">WebGPU atlas unavailable</h2>
+        <p>This luminous atlas requires desktop WebGPU, Dedicated Worker, and OffscreenCanvas. It intentionally does not provide a low-fidelity 2D fallback.</p>
+    </section>
+
+    <script type="module">
+        import { bootLuminousStellarAtlas, LUMINOUS_STELLAR_TARGETS } from "./assets/luminous-stellar-atlas-runtime.js?v=luminous-stellar-atlas-20260428j";
+
+        const query = new URLSearchParams(window.location.search);
+        const initialDistance = Number(query.get("distance") || query.get("d") || 40000);
+        const explicitTarget = query.get("target");
+        const randomSeed = globalThis.crypto?.getRandomValues
+            ? globalThis.crypto.getRandomValues(new Uint32Array(1))[0]
+            : Math.floor((Date.now() + performance.now()) % 4294967295);
+        const dateSeed = new Date().toISOString().slice(0, 10);
+        const seedText = `${dateSeed}:${randomSeed}`;
+        let seedHash = 2166136261;
+        for (let index = 0; index < seedText.length; index += 1) {
+            seedHash ^= seedText.charCodeAt(index);
+            seedHash = Math.imul(seedHash, 16777619) >>> 0;
+        }
+        const randomTarget = LUMINOUS_STELLAR_TARGETS[seedHash % LUMINOUS_STELLAR_TARGETS.length]?.id || "helios";
+
+        const runtime = bootLuminousStellarAtlas({
+            canvas: document.getElementById("scaleCanvas"),
+            hudRoot: document.body,
+            initialTargetId: explicitTarget || randomTarget,
+            initialDistance: Number.isFinite(initialDistance) ? initialDistance : 40000
+        });
+
+        window.__luminousStellarAtlas = runtime;
+    </script>
+</body>
+</html>

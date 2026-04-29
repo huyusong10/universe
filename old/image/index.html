@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universe OS - Observatory Template Index</title>
+    <link rel="stylesheet" href="./assets/observatory-ui.css">
+</head>
+<body class="body-scroll">
+    <canvas id="sceneCanvas" class="scene-canvas" aria-hidden="true"></canvas>
+    <div class="scene-scrim scene-scrim--right"></div>
+
+    <main class="page-shell" style="display: grid; gap: 2rem;">
+        <section class="page-grid page-grid--hero" style="min-height: auto; padding-top: 0.5rem;">
+            <div class="hero-copy" style="max-width: 36rem;">
+                <p class="eyebrow">Universe OS // Observatory Template Set</p>
+                <h1 class="hero-title display-serif">A shared deep-space WebGPU runtime, adapted into multiple scene families.</h1>
+                <p class="lede">This folder now centers around one observatory runtime: palette-shift star surface, layered galactic band, restrained bloom, and a small set of hero diffraction stars. The shared stack stays consistent while each template shifts into a different spatial composition.</p>
+                <div class="toolbar" style="margin-top: 1.3rem;">
+                    <div class="pill">WebGPU-first</div>
+                    <div class="pill">Shared stage asset</div>
+                    <div class="pill">Observatory shell</div>
+                </div>
+            </div>
+
+            <article class="glass-panel" style="padding: 1.15rem 1.2rem; max-width: 30rem; justify-self: end;">
+                <p class="mini-label">Current Focus</p>
+                <h2 style="margin: 0.45rem 0 0; font-size: 1.24rem;">Shared runtime, varied cosmic archetypes</h2>
+                <p class="muted" style="margin: 0.9rem 0 0;">Every template now rides the same WebGPU deep-space runtime. What changes from page to page is the scene family: hero star, deep field, formation cloud, taxonomy cluster, or catalog background.</p>
+            </article>
+        </section>
+
+        <section class="card-grid">
+            <a class="template-link" href="./01-intro-arrival.html">
+                <article class="glass-card template-card">
+                    <div class="template-thumb"></div>
+                    <p class="mini-label" style="margin-top: 1rem;">01 // Arrival</p>
+                    <h2 style="margin: 0.4rem 0 0; font-size: 1.14rem;">Intro arrival</h2>
+                    <p class="muted" style="margin: 0.55rem 0 0;">One dominant knowledge star, one quiet observatory annotation, minimal HUD.</p>
+                </article>
+            </a>
+
+            <a class="template-link" href="./02-roaming-explore.html">
+                <article class="glass-card template-card">
+                    <div class="template-thumb" style="background:
+                        radial-gradient(circle at 24% 34%, rgba(255, 226, 170, 0.14), transparent 22%),
+                        radial-gradient(circle at 72% 62%, rgba(255, 206, 120, 0.2), transparent 24%),
+                        linear-gradient(180deg, rgba(12, 16, 29, 0.88) 0%, rgba(7, 9, 18, 0.88) 100%);"></div>
+                    <p class="mini-label" style="margin-top: 1rem;">02 // Roam</p>
+                    <h2 style="margin: 0.4rem 0 0; font-size: 1.14rem;">Roaming explore</h2>
+                    <p class="muted" style="margin: 0.55rem 0 0;">Survey controls dock to one side while the star field stays broad and readable.</p>
+                </article>
+            </a>
+
+            <a class="template-link" href="./03-survey-navigation.html">
+                <article class="glass-card template-card">
+                    <div class="template-thumb" style="background:
+                        linear-gradient(180deg, rgba(12, 16, 29, 0.88) 0%, rgba(7, 9, 18, 0.88) 100%),
+                        radial-gradient(circle at 82% 26%, rgba(255, 219, 150, 0.18), transparent 22%);"></div>
+                    <p class="mini-label" style="margin-top: 1rem;">03 // Survey</p>
+                    <h2 style="margin: 0.4rem 0 0; font-size: 1.14rem;">Survey navigation</h2>
+                    <p class="muted" style="margin: 0.55rem 0 0;">Strategic search lives inside the same universe shell instead of becoming a separate app page.</p>
+                </article>
+            </a>
+
+            <a class="template-link" href="./04-focused-spatial-card.html">
+                <article class="glass-card template-card">
+                    <div class="template-thumb"></div>
+                    <p class="mini-label" style="margin-top: 1rem;">04 // Focus</p>
+                    <h2 style="margin: 0.4rem 0 0; font-size: 1.14rem;">Focused spatial card</h2>
+                    <p class="muted" style="margin: 0.55rem 0 0;">The reader docks beside the body instead of sitting as a modal on top of it.</p>
+                </article>
+            </a>
+
+            <a class="template-link" href="./05-seed-dock.html">
+                <article class="glass-card template-card">
+                    <div class="template-thumb" style="background:
+                        radial-gradient(circle at 50% 50%, rgba(140, 198, 255, 0.2), transparent 32%),
+                        linear-gradient(180deg, rgba(12, 16, 29, 0.88) 0%, rgba(7, 9, 18, 0.88) 100%);"></div>
+                    <p class="mini-label" style="margin-top: 1rem;">05 // Seed</p>
+                    <h2 style="margin: 0.4rem 0 0; font-size: 1.14rem;">Seed dock</h2>
+                    <p class="muted" style="margin: 0.55rem 0 0;">Submission becomes a casting ritual inside the same observatory environment.</p>
+                </article>
+            </a>
+
+            <a class="template-link" href="./06-academy-panel.html">
+                <article class="glass-card template-card">
+                    <div class="template-thumb"></div>
+                    <p class="mini-label" style="margin-top: 1rem;">06 // Academy Base</p>
+                    <h2 style="margin: 0.4rem 0 0; font-size: 1.14rem;">Academy panel baseline</h2>
+                    <p class="muted" style="margin: 0.55rem 0 0;">Original Academy observatory pass kept as the stable comparison target.</p>
+                </article>
+            </a>
+
+            <a class="template-link" href="./06-academy-panel-limbglow.html">
+                <article class="glass-card template-card">
+                    <div class="template-thumb" style="background:
+                        radial-gradient(circle at 32% 46%, rgba(255, 227, 172, 0.24), transparent 28%),
+                        linear-gradient(180deg, rgba(12, 16, 29, 0.88) 0%, rgba(7, 9, 18, 0.88) 100%);"></div>
+                    <p class="mini-label" style="margin-top: 1rem;">06 // Academy Advanced</p>
+                    <h2 style="margin: 0.4rem 0 0; font-size: 1.14rem;">Academy limb-glow study</h2>
+                    <p class="muted" style="margin: 0.55rem 0 0;">Most advanced palette-shift star study with extra limb-shell and plume tuning.</p>
+                </article>
+            </a>
+
+            <a class="template-link" href="./07-system-overlay.html">
+                <article class="glass-card template-card">
+                    <div class="template-thumb" style="background:
+                        radial-gradient(circle at 70% 30%, rgba(132, 184, 255, 0.18), transparent 22%),
+                        linear-gradient(180deg, rgba(12, 16, 29, 0.88) 0%, rgba(7, 9, 18, 0.88) 100%);"></div>
+                    <p class="mini-label" style="margin-top: 1rem;">07 // System</p>
+                    <h2 style="margin: 0.4rem 0 0; font-size: 1.14rem;">System overlay</h2>
+                    <p class="muted" style="margin: 0.55rem 0 0;">Runtime and accessibility controls now live in the same cosmic shell.</p>
+                </article>
+            </a>
+
+            <a class="template-link" href="./08-cruise-mode.html">
+                <article class="glass-card template-card">
+                    <div class="template-thumb"></div>
+                    <p class="mini-label" style="margin-top: 1rem;">08 // Cruise</p>
+                    <h2 style="margin: 0.4rem 0 0; font-size: 1.14rem;">Cruise mode</h2>
+                    <p class="muted" style="margin: 0.55rem 0 0;">A cinematic tour with restrained controls and a stable optical feel.</p>
+                </article>
+            </a>
+
+            <a class="template-link" href="./09-celestial-bodies.html">
+                <article class="glass-card template-card">
+                    <div class="template-thumb" style="background:
+                        radial-gradient(circle at 18% 34%, rgba(255, 223, 162, 0.16), transparent 18%),
+                        radial-gradient(circle at 54% 60%, rgba(142, 196, 255, 0.14), transparent 18%),
+                        radial-gradient(circle at 84% 38%, rgba(110, 126, 200, 0.16), transparent 18%),
+                        linear-gradient(180deg, rgba(12, 16, 29, 0.88) 0%, rgba(7, 9, 18, 0.88) 100%);"></div>
+                    <p class="mini-label" style="margin-top: 1rem;">09 // Taxonomy</p>
+                    <h2 style="margin: 0.4rem 0 0; font-size: 1.14rem;">Celestial bodies</h2>
+                    <p class="muted" style="margin: 0.55rem 0 0;">Five public body classes with stable silhouettes and thermal signatures.</p>
+                </article>
+            </a>
+
+            <a class="template-link" href="./10-cinematic-flight.html">
+                <article class="glass-card template-card">
+                    <div class="template-thumb"></div>
+                    <p class="mini-label" style="margin-top: 1rem;">10 // Flight Grammar</p>
+                    <h2 style="margin: 0.4rem 0 0; font-size: 1.14rem;">Cinematic flight</h2>
+                    <p class="muted" style="margin: 0.55rem 0 0;">Four camera beats that move from deep-space arrival to readable focus.</p>
+                </article>
+            </a>
+
+            <a class="template-link" href="./10-realistic-star.html">
+                <article class="glass-card template-card">
+                    <div class="template-thumb" style="background:
+                        radial-gradient(circle at 48% 48%, rgba(255, 230, 188, 0.22), transparent 22%),
+                        linear-gradient(180deg, rgba(12, 16, 29, 0.88) 0%, rgba(7, 9, 18, 0.88) 100%);"></div>
+                    <p class="mini-label" style="margin-top: 1rem;">10 // Star Study</p>
+                    <h2 style="margin: 0.4rem 0 0; font-size: 1.14rem;">Palette-shift prototype</h2>
+                    <p class="muted" style="margin: 0.55rem 0 0;">A focused star-only prototype for studying the new shader and limb treatment.</p>
+                </article>
+            </a>
+
+            <a class="template-link" href="./11-cosmic-observatory.html">
+                <article class="glass-card template-card">
+                    <div class="template-thumb" style="background:
+                        radial-gradient(circle at 62% 44%, rgba(255, 226, 172, 0.18), transparent 24%),
+                        linear-gradient(140deg, rgba(122, 166, 255, 0.14) 12%, transparent 46%),
+                        linear-gradient(180deg, rgba(12, 16, 29, 0.88) 0%, rgba(7, 9, 18, 0.88) 100%);"></div>
+                    <p class="mini-label" style="margin-top: 1rem;">11 // Deep Space</p>
+                    <h2 style="margin: 0.4rem 0 0; font-size: 1.14rem;">Cosmic observatory</h2>
+                    <p class="muted" style="margin: 0.55rem 0 0;">The fullest expression of the shared runtime: galactic band, dust lanes, hero anchor stars, and one large observation sun.</p>
+                </article>
+            </a>
+        </section>
+    </main>
+
+    <div class="runtime-corner">
+        <div class="runtime-pill"><span id="runtimeLabel">Initializing WebGPU observatory...</span></div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.webgpu.min.js",
+                "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.webgpu.min.js",
+                "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.tsl.min.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script type="module">
+        import { bootObservatoryStage } from "./assets/observatory-stage.js";
+
+        bootObservatoryStage({
+            canvas: document.getElementById("sceneCanvas"),
+            preset: "index",
+            statusEl: document.getElementById("runtimeLabel")
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universe OS - Roaming Mode</title>
+    <link rel="stylesheet" href="./assets/observatory-ui.css">
+</head>
+<body>
+    <canvas id="sceneCanvas" class="scene-canvas" aria-hidden="true"></canvas>
+    <div class="scene-scrim"></div>
+
+    <main class="page-shell">
+        <div class="page-grid page-grid--split">
+            <section class="hero-copy" style="padding-top: 1rem;">
+                <p class="eyebrow">Universe OS // Roaming</p>
+                <h1 class="hero-title display-serif">Roaming should feel like observing a sky map, not dragging nodes around.</h1>
+                <p class="lede">The scene stays quiet and spatial. Controls cluster into one observatory instrument block while the background field remains broad enough to imply depth, adjacency, and possible flight targets.</p>
+
+                <div class="toolbar" style="margin-top: 1.5rem;">
+                    <button class="toolbar-button">Survey</button>
+                    <button class="toolbar-button">Cruise</button>
+                    <button class="toolbar-button">Clear</button>
+                </div>
+
+                <div class="metrics" style="margin-top: 1.4rem;">
+                    <div class="metric-card">
+                        <span class="mini-label">Orbit Style</span>
+                        <span class="metric-value">Constrained</span>
+                        <span class="muted">Scale changes, but the sky never turns into a game camera.</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="mini-label">Visible Targets</span>
+                        <span class="metric-value">24</span>
+                        <span class="muted">Enough density to imply a basin without becoming a cloud.</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel-stack" data-collapsible-panel>
+                <article class="glass-panel" style="padding: 1rem 1.1rem;">
+                    <div class="panel-header">
+                        <div>
+                            <p class="mini-label">Roaming Instrument Cluster</p>
+                            <h2 style="margin: 0.45rem 0 0; font-size: 1.2rem;">Distributed Systems Basin</h2>
+                        </div>
+                        <div class="toolbar" style="justify-content: flex-end;">
+                            <div class="pill">Scale 1.2 AU</div>
+                            <button class="collapse-toggle" type="button" data-panel-toggle><span data-panel-toggle-text>Collapse</span></button>
+                        </div>
+                    </div>
+                    <div data-panel-body>
+                    <div class="list-panel" style="margin-top: 1rem;">
+                        <div class="list-item">
+                            <span class="list-index">1</span>
+                            <div><strong>Consensus Protocols</strong><div class="muted">Primary stable star in current roaming band.</div></div>
+                        </div>
+                        <div class="list-item">
+                            <span class="list-index">2</span>
+                            <div><strong>Event Sourcing</strong><div class="muted">Offset target, medium-temperature reading candidate.</div></div>
+                        </div>
+                        <div class="list-item">
+                            <span class="list-index">3</span>
+                            <div><strong>Database Sharding</strong><div class="muted">Secondary route marker for the current neighborhood.</div></div>
+                        </div>
+                    </div>
+                    </div>
+                </article>
+
+                <div class="toolbar" style="justify-content: flex-end;" data-panel-body>
+                    <div class="pill">Drag to pan</div>
+                    <div class="pill">Scroll to zoom</div>
+                    <div class="pill">Click to focus</div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <div class="runtime-corner">
+        <div class="runtime-pill"><span id="runtimeLabel">Initializing WebGPU observatory...</span></div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.webgpu.min.js",
+                "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.webgpu.min.js",
+                "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.tsl.min.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script type="module">
+        import { bootObservatoryStage } from "./assets/observatory-stage.js";
+        import { bootCollapsiblePanels } from "./assets/panel-collapse.js";
+
+        bootCollapsiblePanels();
+        bootObservatoryStage({
+            canvas: document.getElementById("sceneCanvas"),
+            preset: "roam",
+            statusEl: document.getElementById("runtimeLabel")
+        });
+    </script>
+</body>
+</html>

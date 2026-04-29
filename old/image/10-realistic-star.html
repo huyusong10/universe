@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universe OS - Palette Shift Star Prototype</title>
+    <link rel="stylesheet" href="./assets/observatory-ui.css">
+</head>
+<body>
+    <canvas id="sceneCanvas" class="scene-canvas" aria-hidden="true"></canvas>
+    <div class="scene-scrim scene-scrim--center"></div>
+
+    <main class="page-shell">
+        <section class="page-grid page-grid--split" style="align-items: center; min-height: calc(100vh - 2rem);">
+            <div class="hero-copy captive-width">
+                <p class="eyebrow">Shader Study // Prototype</p>
+                <h1 class="hero-title display-serif" style="font-size: clamp(3rem, 7vw, 5.5rem);">One star, but no toy glow.</h1>
+                <p class="lede">This study uses a palette-shift surface shader, one limb shell, and restrained additive layers so the body reads like a hot, optical object instead of a cartoon circle with a bright outline.</p>
+
+                <div class="metrics" style="margin-top: 1.4rem;">
+                    <div class="metric-card">
+                        <span class="mini-label">Surface</span>
+                        <span class="metric-value">4</span>
+                        <span class="muted">Animated grayscale lookups drive the palette field and hot patches.</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="mini-label">Outer Layers</span>
+                        <span class="metric-value">3</span>
+                        <span class="muted">Limb shell, one soft glow, one corona sprite, then bloom.</span>
+                    </div>
+                </div>
+            </div>
+
+            <article class="glass-panel" style="padding: 1.2rem 1.25rem; max-width: 29rem; justify-self: end;">
+                <div class="panel-stack">
+                    <div>
+                        <p class="mini-label">Prototype Notes</p>
+                        <h2 style="margin: 0.45rem 0 0; font-size: 1.24rem;">Performance stays focused on the main body.</h2>
+                    </div>
+
+                    <article class="glass-card" style="padding: 1rem 1.05rem;">
+                        <strong>Palette-shift surface</strong>
+                        <p class="muted" style="margin: 0.55rem 0 0;">A grayscale solar surface texture becomes color only through ramp lookup, which keeps the hot and shadow regions coherent across profiles.</p>
+                    </article>
+
+                    <article class="glass-card" style="padding: 1rem 1.05rem;">
+                        <strong>Limb glow shell</strong>
+                        <p class="muted" style="margin: 0.55rem 0 0;">Back-side expansion around the rim replaces the old hard ring and makes the edge read more like corona leakage.</p>
+                    </article>
+
+                    <article class="glass-card" style="padding: 1rem 1.05rem;">
+                        <strong>Budget discipline</strong>
+                        <p class="muted" style="margin: 0.55rem 0 0;">Instead of stacking many full-screen effects, the template spends most of its budget on the core shader and keeps outer layers sparse.</p>
+                    </article>
+
+                    <div class="status-inline">
+                        <div class="pill">WebGPU-first</div>
+                        <div class="pill">Shared observatory runtime</div>
+                    </div>
+                </div>
+            </article>
+        </section>
+    </main>
+
+    <div class="runtime-corner">
+        <div class="runtime-pill"><span id="runtimeLabel">Initializing WebGPU observatory...</span></div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.webgpu.min.js",
+                "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.webgpu.min.js",
+                "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.tsl.min.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script type="module">
+        import { bootObservatoryStage } from "./assets/observatory-stage.js";
+
+        bootObservatoryStage({
+            canvas: document.getElementById("sceneCanvas"),
+            preset: "prototype",
+            statusEl: document.getElementById("runtimeLabel")
+        });
+    </script>
+</body>
+</html>

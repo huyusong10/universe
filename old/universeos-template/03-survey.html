@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universe OS - Survey Field</title>
+    <link rel="stylesheet" href="./assets/observatory-ui.css">
+</head>
+<body>
+    <canvas id="sceneCanvas" class="scene-canvas" aria-hidden="true"></canvas>
+    <div class="scene-scrim"></div>
+
+    <main class="page-shell">
+        <div class="page-grid page-grid--split">
+            <section class="glass-panel" style="padding: 1rem; max-width: 28rem;" data-collapsible-panel>
+                <div class="panel-stack">
+                    <div class="panel-header">
+                        <div>
+                        <p class="mini-label">Survey Search</p>
+                        <h1 style="margin: 0.45rem 0 0; font-size: 1.35rem;">Strategic navigation without leaving the universe shell.</h1>
+                        </div>
+                        <button class="collapse-toggle" type="button" data-panel-toggle><span data-panel-toggle-text>Collapse</span></button>
+                    </div>
+                    <div data-panel-body>
+                    <input class="text-input" value="consensus" aria-label="Search query">
+                    <div class="list-panel">
+                        <div class="list-item"><span class="list-index">1</span><div><strong>Consensus Algorithms</strong><div class="muted">Paxos, Raft, and safety under failure.</div></div></div>
+                        <div class="list-item"><span class="list-index">2</span><div><strong>Distributed Consensus</strong><div class="muted">Operational reading for agreement systems.</div></div></div>
+                        <div class="list-item"><span class="list-index">3</span><div><strong>Byzantine Fault Tolerance</strong><div class="muted">Resilience under adversarial faults.</div></div></div>
+                    </div>
+                    <div class="toolbar">
+                        <div class="pill">3 results</div>
+                        <div class="pill">Enter to focus</div>
+                        <div class="pill">↑↓ to select</div>
+                    </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel-stack" data-collapsible-panel>
+                <article class="glass-panel" style="padding: 1rem 1.1rem;">
+                    <div class="panel-header">
+                        <div>
+                        <p class="mini-label">Survey Field</p>
+                            <h2 style="margin: 0.45rem 0 0; font-size: 1.2rem;">Distributed Systems Basin</h2>
+                        </div>
+                        <div class="toolbar" style="justify-content: flex-end;">
+                            <button class="ghost-button">Exit</button>
+                            <button class="collapse-toggle" type="button" data-panel-toggle><span data-panel-toggle-text>Collapse</span></button>
+                        </div>
+                    </div>
+                    <div class="metrics" style="margin-top: 1rem;" data-panel-body>
+                        <div class="metric-card">
+                            <span class="mini-label">Visible Stars</span>
+                            <span class="metric-value">24</span>
+                            <span class="muted">Filtered to the current semantic basin.</span>
+                        </div>
+                        <div class="metric-card">
+                            <span class="mini-label">Filter</span>
+                            <span class="metric-value">Hot</span>
+                            <span class="muted">Stable + related candidates remain highlighted.</span>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="glass-card" style="padding: 1rem 1.1rem;" data-panel-body>
+                    <p class="mini-label">Celestial Types</p>
+                    <div class="list-panel" style="margin-top: 0.8rem;">
+                        <div class="list-item"><span class="list-index">A</span><div><strong>Blue Star</strong><div class="muted">Hot, recently active or unstable.</div></div></div>
+                        <div class="list-item"><span class="list-index">B</span><div><strong>Yellow Star</strong><div class="muted">Stable and canonical.</div></div></div>
+                        <div class="list-item"><span class="list-index">C</span><div><strong>Beacon</strong><div class="muted">Navigation structure or index anchor.</div></div></div>
+                    </div>
+                </article>
+            </section>
+        </div>
+    </main>
+
+    <div class="runtime-corner">
+        <div class="runtime-pill"><span id="runtimeLabel">Initializing Universe OS survey runtime...</span></div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.webgpu.min.js",
+                "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.webgpu.min.js",
+                "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.tsl.min.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script type="module">
+        import { bootObservatoryStage } from "./assets/observatory-stage.js";
+        import { bootCollapsiblePanels } from "./assets/panel-collapse.js";
+
+        bootCollapsiblePanels();
+        bootObservatoryStage({
+            canvas: document.getElementById("sceneCanvas"),
+            preset: "survey",
+            statusEl: document.getElementById("runtimeLabel")
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universe OS - System Overlay</title>
+    <link rel="stylesheet" href="./assets/observatory-ui.css">
+</head>
+<body>
+    <canvas id="sceneCanvas" class="scene-canvas" aria-hidden="true"></canvas>
+    <div class="scene-scrim scene-scrim--modal"></div>
+
+    <main class="page-shell" style="display: flex; align-items: center; justify-content: center;">
+        <section class="glass-panel overlay-modal" style="overflow: hidden;">
+            <header class="panel-stack" style="padding: 1.15rem 1.25rem; border-bottom: 1px solid rgba(149, 172, 231, 0.12);">
+                <div>
+                    <p class="mini-label">System Overlay</p>
+                    <h1 style="margin: 0.45rem 0 0; font-size: 1.35rem;">Tune the observatory without leaving the universe shell.</h1>
+                </div>
+                <div class="toolbar" style="justify-content: flex-start;">
+                    <div class="pill">Desktop mode</div>
+                    <button class="ghost-button">Close</button>
+                </div>
+            </header>
+
+            <div class="settings-layout">
+                <nav class="settings-nav" aria-label="Settings navigation">
+                    <button aria-current="page">General</button>
+                    <button>Display</button>
+                    <button>Sound</button>
+                    <button>Shortcuts</button>
+                    <button>About</button>
+                </nav>
+
+                <div class="settings-body">
+                    <section class="settings-section">
+                        <div class="panel-header">
+                            <div>
+                                <p class="mini-label">Runtime Policy</p>
+                                <h2 style="margin: 0.4rem 0 0; font-size: 1.18rem;">Observatory quality budget</h2>
+                            </div>
+                            <div class="pill">Balanced</div>
+                        </div>
+
+                        <div class="list-panel">
+                            <div class="list-item">
+                                <span class="list-index">C</span>
+                                <div>
+                                    <strong>Conservative</strong>
+                                    <div class="muted">Lower bloom radius, lower star density, steadier frame time on weaker GPUs.</div>
+                                </div>
+                            </div>
+                            <div class="list-item" style="border-color: rgba(255, 218, 154, 0.22); background: rgba(255, 218, 154, 0.08);">
+                                <span class="list-index">B</span>
+                                <div>
+                                    <strong>Balanced</strong>
+                                    <div class="muted">Keeps the palette-shift star readable while leaving room for HUD and panels.</div>
+                                </div>
+                            </div>
+                            <div class="list-item">
+                                <span class="list-index">A</span>
+                                <div>
+                                    <strong>Aggressive</strong>
+                                    <div class="muted">Pushes density and corona softness for showcase captures on strong desktop hardware.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="settings-section">
+                        <div class="panel-header">
+                            <div>
+                                <p class="mini-label">Accessibility</p>
+                                <h2 style="margin: 0.4rem 0 0; font-size: 1.18rem;">Motion and label readability</h2>
+                            </div>
+                        </div>
+
+                        <div class="settings-option">
+                            <div>
+                                <strong>Reduced motion</strong>
+                                <div class="muted">Stops slow orbit drift and freezes the long-breath cinematic pulse.</div>
+                            </div>
+                            <div class="toggle-pill"></div>
+                        </div>
+
+                        <div class="settings-option">
+                            <div>
+                                <strong>High-contrast labels</strong>
+                                <div class="muted">Raises annotation contrast without changing the main stage color profile.</div>
+                            </div>
+                            <div class="toggle-pill is-on"></div>
+                        </div>
+
+                        <div class="settings-option">
+                            <div>
+                                <strong>Ambient sound bed</strong>
+                                <div class="muted">Lets the observatory keep a low-frequency room tone during cruise and arrival.</div>
+                            </div>
+                            <div class="toggle-pill is-on"></div>
+                        </div>
+                    </section>
+
+                    <section class="settings-section">
+                        <div class="panel-header">
+                            <div>
+                                <p class="mini-label">Mix Levels</p>
+                                <h2 style="margin: 0.4rem 0 0; font-size: 1.18rem;">Calibrate the shell, not the star</h2>
+                            </div>
+                        </div>
+
+                        <div class="range-block">
+                            <div class="panel-header" style="gap: 0.5rem;">
+                                <span>HUD brightness</span>
+                                <span class="muted">72%</span>
+                            </div>
+                            <div class="range-track"><div class="range-fill" style="width: 72%;"></div></div>
+                        </div>
+
+                        <div class="range-block">
+                            <div class="panel-header" style="gap: 0.5rem;">
+                                <span>Panel translucency</span>
+                                <span class="muted">64%</span>
+                            </div>
+                            <div class="range-track"><div class="range-fill" style="width: 64%;"></div></div>
+                        </div>
+
+                        <div class="range-block">
+                            <div class="panel-header" style="gap: 0.5rem;">
+                                <span>Observation audio</span>
+                                <span class="muted">58%</span>
+                            </div>
+                            <div class="range-track"><div class="range-fill" style="width: 58%;"></div></div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <footer class="panel-header" style="padding: 1rem 1.25rem; border-top: 1px solid rgba(149, 172, 231, 0.12);">
+                <div class="status-inline">
+                    <div class="pill">Locale inherits from bootstrap</div>
+                    <div class="pill">System overlay pauses cruise</div>
+                </div>
+                <div class="toolbar">
+                    <button class="ghost-button">Reset Defaults</button>
+                    <button class="primary-button">Apply Runtime Policy</button>
+                </div>
+            </footer>
+        </section>
+    </main>
+
+    <div class="runtime-corner">
+        <div class="runtime-pill"><span id="runtimeLabel">Initializing WebGPU observatory...</span></div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.webgpu.min.js",
+                "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.webgpu.min.js",
+                "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.tsl.min.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script type="module">
+        import { bootObservatoryStage } from "./assets/observatory-stage.js";
+
+        bootObservatoryStage({
+            canvas: document.getElementById("sceneCanvas"),
+            preset: "system",
+            statusEl: document.getElementById("runtimeLabel")
+        });
+    </script>
+</body>
+</html>

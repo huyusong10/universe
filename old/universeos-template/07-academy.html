@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universe OS - Academy Panel</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+        :root {
+            color-scheme: dark;
+            --bg: #05070d;
+            --bg-deep: #02040a;
+            --panel: rgba(8, 11, 21, 0.74);
+            --panel-line: rgba(155, 184, 255, 0.18);
+            --panel-strong: rgba(255, 255, 255, 0.9);
+            --panel-soft: rgba(220, 227, 255, 0.68);
+            --panel-dim: rgba(152, 165, 196, 0.52);
+            --accent: #88bfff;
+            --accent-soft: rgba(136, 191, 255, 0.18);
+            --accent-hot: #ffd89a;
+            --warning: rgba(255, 215, 153, 0.88);
+            --panel-width: clamp(22rem, 30vw, 28rem);
+            --shadow: 0 28px 90px rgba(0, 0, 0, 0.55);
+            --focus-ring: 0 0 0 2px rgba(133, 188, 255, 0.78);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            background:
+                radial-gradient(circle at 15% 22%, rgba(44, 66, 130, 0.28), transparent 30%),
+                radial-gradient(circle at 84% 24%, rgba(25, 48, 96, 0.2), transparent 26%),
+                linear-gradient(180deg, #05070d 0%, #04060b 36%, #02040a 100%);
+            color: var(--panel-strong);
+            font-family: "Space Grotesk", sans-serif;
+            overflow: hidden;
+        }
+
+        body {
+            position: relative;
+        }
+
+        button,
+        a {
+            font: inherit;
+        }
+
+        button {
+            cursor: pointer;
+            color: inherit;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        :focus-visible {
+            outline: none;
+            box-shadow: var(--focus-ring);
+        }
+
+        #sceneCanvas {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+            z-index: 0;
+        }
+
+        .runtime-state {
+            position: fixed;
+            left: clamp(1rem, 2vw, 1.6rem);
+            bottom: clamp(1rem, 2vw, 1.6rem);
+            z-index: 3;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.65rem;
+            min-height: 2.5rem;
+            padding: 0.55rem 0.88rem;
+            border-radius: 999px;
+            border: 1px solid rgba(149, 172, 231, 0.16);
+            background: rgba(6, 9, 17, 0.52);
+            backdrop-filter: blur(16px);
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.26);
+            color: rgba(226, 236, 255, 0.86);
+            font-size: 0.8rem;
+            letter-spacing: 0.02em;
+        }
+
+        .runtime-state[hidden] {
+            display: none;
+        }
+
+        .runtime-dot {
+            width: 0.52rem;
+            height: 0.52rem;
+            border-radius: 50%;
+            flex: 0 0 auto;
+            background: rgba(129, 165, 255, 0.7);
+            box-shadow: 0 0 16px rgba(129, 165, 255, 0.72);
+        }
+
+        .runtime-state[data-mode="live"] .runtime-dot {
+            background: rgba(255, 220, 164, 0.96);
+            box-shadow: 0 0 18px rgba(255, 194, 106, 0.9);
+        }
+
+        .runtime-state[data-mode="unsupported"] {
+            border-color: rgba(255, 210, 152, 0.22);
+            background: rgba(18, 11, 5, 0.74);
+            color: rgba(255, 229, 188, 0.92);
+        }
+
+        .runtime-state[data-mode="unsupported"] .runtime-dot {
+            background: rgba(255, 186, 122, 0.96);
+            box-shadow: 0 0 18px rgba(255, 186, 122, 0.86);
+        }
+
+        .scene-scrim {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+            background:
+                radial-gradient(circle at 32% 52%, transparent 0%, transparent 18%, rgba(3, 4, 10, 0.14) 36%, rgba(2, 4, 10, 0.55) 70%, rgba(2, 4, 10, 0.82) 100%),
+                linear-gradient(90deg, rgba(3, 5, 10, 0.08) 0%, rgba(3, 5, 10, 0) 48%, rgba(3, 5, 10, 0.26) 72%, rgba(3, 5, 10, 0.64) 100%);
+            pointer-events: none;
+        }
+
+        .academy-shell {
+            position: relative;
+            z-index: 2;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) var(--panel-width);
+            gap: clamp(1.5rem, 2vw, 2.5rem);
+            height: 100vh;
+            padding: clamp(1rem, 2.2vw, 2rem);
+            align-items: stretch;
+            overflow: hidden;
+        }
+
+        .stage {
+            position: relative;
+            min-width: 0;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: clamp(1rem, 1.8vw, 1.75rem);
+        }
+
+        .stage-copy {
+            max-width: min(34rem, 48vw);
+            padding-top: clamp(0.5rem, 1vw, 1rem);
+        }
+
+        .eyebrow,
+        .chip-label,
+        .section-kicker,
+        .mini-label,
+        .code-topline,
+        .progress-label {
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            font-size: 0.67rem;
+        }
+
+        .eyebrow {
+            color: rgba(202, 219, 255, 0.72);
+            margin: 0 0 0.9rem;
+        }
+
+        .stage-title {
+            margin: 0;
+            font-family: "Instrument Serif", serif;
+            font-style: italic;
+            font-size: clamp(2.15rem, 3.85vw, 4.25rem);
+            line-height: 0.95;
+            letter-spacing: -0.03em;
+            max-width: 8.4ch;
+            text-wrap: balance;
+            text-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+        }
+
+        .stage-summary {
+            margin: 1rem 0 0;
+            max-width: 28rem;
+            color: rgba(230, 237, 255, 0.78);
+            line-height: 1.6;
+            font-size: clamp(0.9rem, 1vw, 1rem);
+            text-shadow: 0 6px 16px rgba(0, 0, 0, 0.34);
+        }
+
+        .stage-callouts {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+            margin-top: 1.25rem;
+        }
+
+        .orbit-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.65rem;
+            min-height: 2.45rem;
+            padding: 0.48rem 0.85rem;
+            border-radius: 999px;
+            border: 1px solid rgba(144, 181, 255, 0.16);
+            background: rgba(7, 10, 18, 0.34);
+            backdrop-filter: blur(14px);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        .orbit-chip::before {
+            content: "";
+            width: 0.55rem;
+            height: 0.55rem;
+            border-radius: 50%;
+            background: radial-gradient(circle, #fff6cf 0%, #ffc86e 55%, transparent 100%);
+            box-shadow: 0 0 18px rgba(255, 196, 121, 0.8);
+            flex: 0 0 auto;
+        }
+
+        .orbit-chip strong {
+            font-size: 0.93rem;
+            color: rgba(255, 249, 234, 0.96);
+            font-weight: 600;
+        }
+
+        .orbit-chip span {
+            color: var(--panel-soft);
+            font-size: 0.82rem;
+        }
+
+        .stage-diagnostics {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.65rem;
+            align-self: flex-start;
+            width: min(31rem, 44vw);
+            margin-bottom: 0.35rem;
+        }
+
+        .diagnostic-card {
+            min-height: auto;
+            padding: 0.68rem 0.8rem 0.72rem;
+            border-radius: 1rem;
+            background: linear-gradient(180deg, rgba(8, 11, 20, 0.54) 0%, rgba(7, 10, 17, 0.32) 100%);
+            border: 1px solid rgba(122, 155, 219, 0.15);
+            backdrop-filter: blur(18px);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+
+        .chip-label {
+            display: inline-flex;
+            color: rgba(175, 191, 233, 0.64);
+            margin-bottom: 0.32rem;
+        }
+
+        .diagnostic-card strong {
+            display: block;
+            font-size: 0.88rem;
+            line-height: 1.2;
+        }
+
+        .academy-panel {
+            position: relative;
+            align-self: center;
+            display: grid;
+            grid-template-rows: auto auto minmax(0, 1fr) auto;
+            min-height: min(76vh, 44rem);
+            max-height: calc(100vh - clamp(1.4rem, 3vw, 2.5rem));
+            border-radius: 1.6rem;
+            overflow: hidden;
+            background:
+                linear-gradient(180deg, rgba(12, 17, 31, 0.72) 0%, rgba(8, 11, 21, 0.84) 100%);
+            border: 1px solid var(--panel-line);
+            backdrop-filter: blur(28px);
+            box-shadow: var(--shadow);
+        }
+
+        .academy-panel[data-collapsed="true"] {
+            grid-template-rows: auto;
+            min-height: auto;
+        }
+
+        .academy-panel[data-collapsed="true"] .panel-track,
+        .academy-panel[data-collapsed="true"] .panel-content,
+        .academy-panel[data-collapsed="true"] .panel-footer {
+            display: none;
+        }
+
+        .academy-panel::before {
+            content: "";
+            position: absolute;
+            left: -10rem;
+            top: 5.3rem;
+            width: 10rem;
+            height: 1px;
+            background: linear-gradient(90deg, rgba(255, 214, 145, 0), rgba(255, 214, 145, 0.2) 35%, rgba(136, 191, 255, 0.3) 100%);
+        }
+
+        .academy-panel::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 10rem;
+            background: linear-gradient(180deg, rgba(151, 190, 255, 0.06), transparent 72%);
+            pointer-events: none;
+        }
+
+        .panel-header,
+        .panel-track,
+        .panel-content,
+        .panel-footer {
+            position: relative;
+            z-index: 1;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: start;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 1.05rem 1.15rem 0.9rem;
+            border-bottom: 1px solid rgba(152, 172, 223, 0.12);
+        }
+
+        .panel-title-group {
+            min-width: 0;
+        }
+
+        .section-kicker {
+            color: rgba(198, 212, 252, 0.66);
+            margin: 0 0 0.6rem;
+        }
+
+        .panel-title {
+            margin: 0;
+            font-size: clamp(1.35rem, 2vw, 1.72rem);
+            line-height: 1.08;
+            letter-spacing: -0.03em;
+        }
+
+        .panel-subtitle {
+            margin: 0.55rem 0 0;
+            color: var(--panel-soft);
+            line-height: 1.55;
+            font-size: 0.93rem;
+            max-width: 30ch;
+        }
+
+        .panel-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 2.55rem;
+            padding: 0.58rem 0.92rem;
+            border-radius: 999px;
+            border: 1px solid rgba(158, 181, 237, 0.18);
+            background: rgba(255, 255, 255, 0.02);
+            color: rgba(240, 244, 255, 0.92);
+            font-size: 0.84rem;
+            letter-spacing: 0.02em;
+            transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease;
+        }
+
+        .panel-toggle:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(210, 222, 255, 0.28);
+        }
+
+        .panel-track {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.65rem;
+            padding: 0.8rem 1.15rem 0.9rem;
+            border-bottom: 1px solid rgba(152, 172, 223, 0.12);
+        }
+
+        .track-item {
+            display: grid;
+            grid-template-columns: auto minmax(0, 1fr);
+            gap: 0.72rem;
+            align-items: center;
+            min-height: 3.25rem;
+            padding: 0.68rem 0.78rem;
+            border-radius: 1rem;
+            border: 1px solid rgba(153, 174, 226, 0.1);
+            background: rgba(255, 255, 255, 0.015);
+        }
+
+        .track-item[data-active="true"] {
+            background: linear-gradient(180deg, rgba(132, 188, 255, 0.13) 0%, rgba(132, 188, 255, 0.06) 100%);
+            border-color: rgba(132, 188, 255, 0.24);
+        }
+
+        .track-index {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.85rem;
+            aspect-ratio: 1;
+            border-radius: 999px;
+            border: 1px solid rgba(154, 176, 232, 0.22);
+            color: rgba(230, 238, 255, 0.86);
+            font-size: 0.82rem;
+        }
+
+        .track-item[data-active="true"] .track-index {
+            border-color: rgba(255, 220, 169, 0.6);
+            background: rgba(255, 213, 144, 0.18);
+            color: rgba(255, 236, 205, 0.98);
+        }
+
+        .track-copy {
+            min-width: 0;
+        }
+
+        .track-copy strong {
+            display: block;
+            font-size: 0.86rem;
+            line-height: 1.2;
+            margin-bottom: 0.16rem;
+        }
+
+        .track-copy span {
+            display: block;
+            color: rgba(196, 210, 245, 0.58);
+            font-size: 0.72rem;
+            line-height: 1.35;
+        }
+
+        .panel-content {
+            overflow: auto;
+            padding: 1rem 1.15rem 1.15rem;
+            display: grid;
+            gap: 1rem;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(122, 146, 207, 0.45) transparent;
+        }
+
+        .panel-content::-webkit-scrollbar {
+            width: 0.55rem;
+        }
+
+        .panel-content::-webkit-scrollbar-thumb {
+            border-radius: 999px;
+            background: rgba(122, 146, 207, 0.45);
+        }
+
+        .lesson-block {
+            padding: 1rem 1rem 1.05rem;
+            border-radius: 1.15rem;
+            background: rgba(4, 6, 11, 0.24);
+            border: 1px solid rgba(149, 172, 231, 0.11);
+        }
+
+        .lesson-block h2,
+        .lesson-block h3 {
+            margin: 0;
+            line-height: 1.2;
+        }
+
+        .lesson-block h2 {
+            font-size: 1.05rem;
+        }
+
+        .lesson-block h3 {
+            font-size: 0.94rem;
+        }
+
+        .lesson-block p {
+            margin: 0.5rem 0 0;
+            color: var(--panel-soft);
+            line-height: 1.62;
+            font-size: 0.88rem;
+        }
+
+        .lead-copy {
+            padding: 1.15rem 1.08rem;
+            background:
+                radial-gradient(circle at 16% 12%, rgba(255, 212, 141, 0.1), transparent 22%),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.025) 0%, rgba(255, 255, 255, 0) 100%);
+        }
+
+        .signal-strip {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.7rem;
+            margin-top: 1rem;
+        }
+
+        .signal-pill {
+            min-height: 4.6rem;
+            padding: 0.7rem 0.8rem;
+            border-radius: 1rem;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(148, 171, 229, 0.1);
+        }
+
+        .signal-pill strong {
+            display: block;
+            margin-top: 0.25rem;
+            font-size: 1rem;
+            color: rgba(255, 246, 226, 0.97);
+        }
+
+        .signal-pill span {
+            display: block;
+            color: rgba(197, 211, 245, 0.63);
+            font-size: 0.75rem;
+            line-height: 1.5;
+        }
+
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.72rem;
+            margin-top: 0.9rem;
+        }
+
+        .control-card {
+            min-height: 8rem;
+            display: grid;
+            gap: 0.7rem;
+            align-content: start;
+            padding: 0.95rem;
+            border-radius: 1rem;
+            background: linear-gradient(180deg, rgba(9, 12, 21, 0.74) 0%, rgba(6, 8, 14, 0.74) 100%);
+            border: 1px solid rgba(145, 168, 222, 0.1);
+        }
+
+        .control-icon {
+            width: 2.35rem;
+            height: 2.35rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.95rem;
+            background: rgba(136, 191, 255, 0.09);
+            color: rgba(179, 213, 255, 0.94);
+        }
+
+        .control-card p {
+            margin-top: -0.3rem;
+            font-size: 0.8rem;
+        }
+
+        .mcp-card {
+            display: grid;
+            gap: 0.8rem;
+        }
+
+        .tip-row {
+            display: flex;
+            align-items: start;
+            gap: 0.75rem;
+            padding: 0.85rem 0.95rem;
+            border-radius: 1rem;
+            background: rgba(255, 255, 255, 0.022);
+            border: 1px solid rgba(145, 168, 222, 0.1);
+        }
+
+        .tip-row svg {
+            flex: 0 0 auto;
+            margin-top: 0.05rem;
+            color: rgba(255, 220, 171, 0.86);
+        }
+
+        .tip-row strong {
+            display: block;
+            margin-bottom: 0.28rem;
+            font-size: 0.88rem;
+        }
+
+        .code-shell {
+            border-radius: 1rem;
+            background: rgba(2, 4, 8, 0.86);
+            border: 1px solid rgba(149, 172, 231, 0.13);
+            overflow: hidden;
+        }
+
+        .code-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.7rem 0.95rem;
+            border-bottom: 1px solid rgba(149, 172, 231, 0.1);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .code-topline {
+            color: rgba(196, 210, 245, 0.62);
+        }
+
+        .code-copy {
+            border: 0;
+            border-radius: 999px;
+            padding: 0.45rem 0.75rem;
+            background: rgba(136, 191, 255, 0.12);
+            color: rgba(225, 237, 255, 0.92);
+        }
+
+        .code-copy:hover {
+            background: rgba(136, 191, 255, 0.2);
+        }
+
+        pre {
+            margin: 0;
+            padding: 1rem 1rem 1.05rem;
+            overflow: auto;
+            color: rgba(228, 237, 255, 0.9);
+            font-size: 0.79rem;
+            line-height: 1.62;
+        }
+
+        code {
+            font-family: "SFMono-Regular", "SF Mono", "Cascadia Code", "JetBrains Mono", monospace;
+        }
+
+        .panel-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.85rem 1.15rem 1rem;
+            border-top: 1px solid rgba(149, 172, 231, 0.11);
+            background: rgba(3, 5, 10, 0.42);
+        }
+
+        .progress-meta {
+            display: grid;
+            gap: 0.25rem;
+            min-width: 0;
+        }
+
+        .progress-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: rgba(225, 236, 255, 0.92);
+            font-size: 0.85rem;
+            min-width: 0;
+        }
+
+        .progress-badge {
+            width: 2.1rem;
+            aspect-ratio: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background:
+                radial-gradient(circle at 50% 50%, rgba(7, 11, 20, 1) 58%, transparent 59%),
+                conic-gradient(from 0deg, rgba(255, 213, 142, 1) 0deg, rgba(255, 213, 142, 1) 120deg, rgba(136, 191, 255, 0.18) 120deg 360deg);
+            color: rgba(255, 247, 226, 0.94);
+            font-size: 0.74rem;
+            font-weight: 600;
+        }
+
+        .progress-label {
+            color: rgba(195, 208, 241, 0.58);
+        }
+
+        .progress-row span:last-child {
+            min-width: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .footer-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .ghost-button,
+        .primary-button {
+            min-height: 2.9rem;
+            padding: 0.72rem 1rem;
+            border-radius: 999px;
+            border: 1px solid rgba(149, 172, 231, 0.14);
+            transition: transform 180ms ease, background-color 180ms ease, border-color 180ms ease;
+        }
+
+        .ghost-button {
+            background: rgba(255, 255, 255, 0.03);
+            color: rgba(214, 227, 252, 0.84);
+        }
+
+        .ghost-button:hover {
+            transform: translateY(-1px);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .primary-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.55rem;
+            background:
+                linear-gradient(180deg, rgba(255, 224, 171, 0.98) 0%, rgba(255, 198, 116, 0.95) 100%);
+            color: #2d1800;
+            border-color: rgba(255, 230, 186, 0.5);
+            box-shadow: 0 10px 32px rgba(255, 179, 71, 0.22);
+            font-weight: 700;
+        }
+
+        .primary-button:hover {
+            transform: translateY(-1px);
+        }
+
+        .primary-button svg,
+        .ghost-button svg {
+            flex: 0 0 auto;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 1080px) {
+            :root {
+                --panel-width: minmax(0, 24rem);
+            }
+
+            .academy-shell {
+                grid-template-columns: minmax(0, 1fr);
+                grid-template-rows: minmax(42vh, 48vh) auto;
+                align-items: start;
+                height: auto;
+                min-height: 100vh;
+                overflow: auto;
+            }
+
+            .stage {
+                min-height: 42vh;
+                padding-bottom: 0.6rem;
+            }
+
+            .stage-copy {
+                max-width: min(34rem, 74vw);
+            }
+
+            .stage-diagnostics {
+                width: min(100%, 38rem);
+            }
+
+            .academy-panel {
+                width: min(100%, 38rem);
+                min-height: auto;
+                max-height: none;
+                justify-self: stretch;
+            }
+
+            .academy-panel::before {
+                left: 1.8rem;
+                top: -3.2rem;
+                width: 1px;
+                height: 3.2rem;
+                background: linear-gradient(180deg, rgba(255, 214, 145, 0), rgba(255, 214, 145, 0.16) 40%, rgba(136, 191, 255, 0.26) 100%);
+            }
+        }
+
+        @media (max-width: 760px) {
+            html,
+            body {
+                overflow: auto;
+            }
+
+            .runtime-state {
+                display: none !important;
+            }
+
+            .academy-shell {
+                padding: 1rem;
+                gap: 1rem;
+            }
+
+            .stage {
+                padding: 0.4rem 0.15rem 0;
+                min-height: 27rem;
+            }
+
+            .stage-copy {
+                max-width: 100%;
+            }
+
+            .stage-summary {
+                max-width: 24rem;
+            }
+
+            .stage-diagnostics,
+            .panel-track,
+            .signal-strip,
+            .control-grid {
+                grid-template-columns: minmax(0, 1fr);
+            }
+
+            .academy-panel {
+                width: 100%;
+            }
+
+            .panel-header,
+            .panel-track,
+            .panel-content,
+            .panel-footer {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+
+            .panel-footer {
+                align-items: start;
+                flex-direction: column;
+            }
+
+            .footer-actions {
+                width: 100%;
+                justify-content: stretch;
+            }
+
+            .ghost-button,
+            .primary-button {
+                flex: 1 1 auto;
+                justify-content: center;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation: none !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+    </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.webgpu.min.js",
+                "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.webgpu.min.js",
+                "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.tsl.min.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <canvas id="sceneCanvas" aria-hidden="true"></canvas>
+    <div class="scene-scrim" aria-hidden="true"></div>
+    <div class="runtime-state" id="runtimeState" hidden>
+        <span class="runtime-dot" aria-hidden="true"></span>
+        <span id="runtimeStateText"></span>
+    </div>
+
+    <main class="academy-shell">
+        <section class="stage" aria-labelledby="academy-stage-title">
+            <div class="stage-copy">
+                <p class="eyebrow">Academy // Near-field Observation</p>
+                <h1 class="stage-title" id="academy-stage-title">Learn the Universe while keeping the star in frame.</h1>
+                <p class="stage-summary">
+                    The tutorial now rides beside the celestial body itself, so users can read controls, taxonomy, and MCP guidance without losing the scale of the surrounding knowledge cosmos.
+                </p>
+
+                <div class="stage-callouts" aria-label="Observation context">
+                    <div class="orbit-chip">
+                        <div>
+                            <strong>Focus Window</strong>
+                            <span>Near-field academy docking</span>
+                        </div>
+                    </div>
+                    <div class="orbit-chip">
+                        <div>
+                            <strong>Surface Layer</strong>
+                            <span>WebGPU surface, bloom, corona</span>
+                        </div>
+                    </div>
+                    <div class="orbit-chip">
+                        <div>
+                            <strong>Renderer</strong>
+                            <span>three/webgpu observatory path</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stage-diagnostics" aria-label="Observation diagnostics">
+                <article class="diagnostic-card">
+                    <span class="chip-label">Observation Rule</span>
+                    <strong>Keep the panel docked, not centered.</strong>
+                </article>
+                <article class="diagnostic-card">
+                    <span class="chip-label">Visual Debt Removed</span>
+                    <strong>No more 2D toy-star glass modal.</strong>
+                </article>
+                <article class="diagnostic-card">
+                    <span class="chip-label">Render Upgrade</span>
+                    <strong>GPU surface stack with soft bloom.</strong>
+                </article>
+            </div>
+        </section>
+
+        <aside class="academy-panel" aria-label="Academy tutorial panel" data-collapsible-panel>
+            <header class="panel-header">
+                <div class="panel-title-group">
+                    <p class="section-kicker">Academy panel</p>
+                    <h2 class="panel-title">Operating the Universe</h2>
+                    <p class="panel-subtitle">A compact observatory guide for navigation, celestial reading, and agent-side entry points.</p>
+                </div>
+
+                <button class="panel-toggle" type="button" data-panel-toggle data-open-label="Collapse academy panel" data-closed-label="Expand academy panel" aria-label="Collapse academy panel">
+                    <span data-panel-toggle-text>Collapse</span>
+                </button>
+            </header>
+
+            <div class="panel-track" role="navigation" aria-label="Tutorial steps" data-panel-body>
+                <div class="track-item" data-active="true">
+                    <span class="track-index">1</span>
+                    <div class="track-copy">
+                        <strong>Observation</strong>
+                        <span>Frame the target.</span>
+                    </div>
+                </div>
+                <div class="track-item" data-active="false">
+                    <span class="track-index">2</span>
+                    <div class="track-copy">
+                        <strong>Celestial types</strong>
+                        <span>Read public classes.</span>
+                    </div>
+                </div>
+                <div class="track-item" data-active="false">
+                    <span class="track-index">3</span>
+                    <div class="track-copy">
+                        <strong>Agent paths</strong>
+                        <span>MCP + skill handoff.</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-content" data-panel-body>
+                <section class="lesson-block lead-copy">
+                    <h2>The knowledge body remains the main actor.</h2>
+                    <p>
+                        The Academy view should teach from beside the star, not replace it. In the near-field band, the target body holds the image while the tutorial card stays narrow, translucent, and structurally stable across languages.
+                    </p>
+                    <div class="signal-strip" aria-label="Lesson signals">
+                        <div class="signal-pill">
+                            <span class="mini-label">Target width</span>
+                            <strong>25-33%</strong>
+                            <span>Reserve enough mass for the celestial body before opening the panel.</span>
+                        </div>
+                        <div class="signal-pill">
+                            <span class="mini-label">Panel posture</span>
+                            <strong>Docked</strong>
+                            <span>Use a fixed edge anchor so copy never fights the star for center stage.</span>
+                        </div>
+                        <div class="signal-pill">
+                            <span class="mini-label">Surface read</span>
+                            <strong>Layered</strong>
+                            <span>Texture, rim blast, halo, and flare make the body feel physically hot.</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="lesson-block">
+                    <h3>Navigation controls</h3>
+                    <p>The interaction layer stays compact and readable while the scene remains visible.</p>
+
+                    <div class="control-grid">
+                        <article class="control-card">
+                            <span class="control-icon" aria-hidden="true">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                    <path d="M11 5H5V11M13 19H19V13M5 13V19H11M19 11V5H13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                            </span>
+                            <div>
+                                <h3>Orbit</h3>
+                                <p>Rotate around the current focal anchor without turning the scene into free-flight space tourism.</p>
+                            </div>
+                        </article>
+
+                        <article class="control-card">
+                            <span class="control-icon" aria-hidden="true">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                    <path d="M11 18A7 7 0 1 1 18 11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                    <path d="M20 20L16.65 16.65" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                </svg>
+                            </span>
+                            <div>
+                                <h3>Zoom</h3>
+                                <p>Move between survey, mid-field, and near-field observation bands with deliberate camera steps.</p>
+                            </div>
+                        </article>
+
+                        <article class="control-card">
+                            <span class="control-icon" aria-hidden="true">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                    <path d="M12 5L14.5 10L20 10.75L16 14.5L17 20L12 17.3L7 20L8 14.5L4 10.75L9.5 10L12 5Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+                                </svg>
+                            </span>
+                            <div>
+                                <h3>Focus</h3>
+                                <p>Select the knowledge body and let the panel open as an attached observatory layer, not a full takeover.</p>
+                            </div>
+                        </article>
+
+                        <article class="control-card">
+                            <span class="control-icon" aria-hidden="true">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                                    <path d="M4 6.5H20M4 12H20M4 17.5H14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                                </svg>
+                            </span>
+                            <div>
+                                <h3>Survey</h3>
+                                <p>Return to the strategic star map when you need structure, then drop back into the near-field lesson.</p>
+                            </div>
+                        </article>
+                    </div>
+                </section>
+
+                <section class="lesson-block mcp-card">
+                    <h3>MCP entry point</h3>
+                    <p>The teaching panel can still expose practical agent setup, but it should be secondary to the spatial read of the universe.</p>
+
+                    <div class="tip-row">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M12 3L19 7V17L12 21L5 17V7L12 3Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+                            <path d="M9 10.5L11.5 13L15.5 9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <div>
+                            <strong>Keep the guide small and durable.</strong>
+                            <p>Code snippets and route tips should sit inside a compact instrument block so they do not flatten the celestial composition into a docs page.</p>
+                        </div>
+                    </div>
+
+                    <div class="code-shell">
+                        <div class="code-header">
+                            <span class="code-topline">claude_desktop_config.json</span>
+                            <button class="code-copy" type="button">Copy</button>
+                        </div>
+                        <pre><code>{
+  "mcpServers": {
+    "sediment": {
+      "command": "npx",
+      "args": ["-y", "@sediment/mcp-server"],
+      "env": {
+        "SEDIMENT_API_KEY": "your-api-key"
+      }
+    }
+  }
+}</code></pre>
+                    </div>
+                </section>
+            </div>
+
+            <footer class="panel-footer" data-panel-body>
+                <div class="progress-meta">
+                    <span class="progress-label">Tutorial progress</span>
+                    <div class="progress-row">
+                        <span class="progress-badge" aria-hidden="true">1/3</span>
+                        <span>Operating the Universe • 3 sections</span>
+                    </div>
+                </div>
+
+                <div class="footer-actions">
+                    <button class="ghost-button" type="button">Previous</button>
+                    <button class="primary-button" type="button">
+                        Next section
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M8 5L15 12L8 19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+            </footer>
+        </aside>
+    </main>
+
+    <script type="module">
+        import { bootAcademyStageShell } from "./assets/academy-stage-shell.js";
+        import { bootCollapsiblePanels } from "./assets/panel-collapse.js";
+
+        bootCollapsiblePanels();
+        bootAcademyStageShell({ preset: "academy" });
+    </script>
+</body>
+</html>

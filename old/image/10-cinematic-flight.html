@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universe OS - Cinematic Flight Grammar</title>
+    <link rel="stylesheet" href="./assets/observatory-ui.css">
+</head>
+<body class="cinematic-bars">
+    <canvas id="sceneCanvas" class="scene-canvas" aria-hidden="true"></canvas>
+    <div class="scene-scrim scene-scrim--center"></div>
+
+    <main class="page-shell" style="display: grid; gap: 2rem; align-content: start;">
+        <section class="page-grid page-grid--split" style="align-items: end; min-height: auto; padding-top: 9vh;">
+            <div class="hero-copy">
+                <p class="eyebrow">Flight Grammar</p>
+                <h1 class="hero-title display-serif" style="font-size: clamp(2.9rem, 6vw, 5rem);">A four-shot move from deep space to readable knowledge.</h1>
+                <p class="lede">The camera should never feel like free-flight gameplay. It should feel like guided astronomical observation: distant scale first, then a clear approach, then a deliberate near-field hold beside the target body.</p>
+                <div class="metrics" style="margin-top: 1.35rem;">
+                    <div class="metric-card">
+                        <span class="mini-label">Shot Count</span>
+                        <span class="metric-value">4</span>
+                        <span class="muted">Enough to teach motion grammar without exhausting the user.</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="mini-label">Near-Field Hold</span>
+                        <span class="metric-value">31%</span>
+                        <span class="muted">Target body should occupy a decisive but not overwhelming share of the frame.</span>
+                    </div>
+                </div>
+            </div>
+
+            <article class="glass-panel" style="padding: 1.15rem 1.2rem;">
+                <p class="mini-label">Camera Notes</p>
+                <div class="list-panel" style="margin-top: 0.9rem;">
+                    <div class="list-item"><span class="list-index">1</span><div><strong>Arrival</strong><div class="muted">Establish the basin and let one star emerge as the destination.</div></div></div>
+                    <div class="list-item"><span class="list-index">2</span><div><strong>Translation</strong><div class="muted">Move mostly through camera displacement, not object drift or fake parallax tricks.</div></div></div>
+                    <div class="list-item"><span class="list-index">3</span><div><strong>Deceleration</strong><div class="muted">Soften before the read state so the panel can dock calmly.</div></div></div>
+                    <div class="list-item"><span class="list-index">4</span><div><strong>Focus Hold</strong><div class="muted">Stop once the body reaches the observation band and the reader can attach.</div></div></div>
+                </div>
+            </article>
+        </section>
+
+        <section class="story-grid">
+            <article class="glass-card template-card">
+                <p class="mini-label">Shot 01</p>
+                <h2 style="margin: 0.5rem 0 0; font-size: 1.08rem;">Basin reveal</h2>
+                <p class="muted" style="margin: 0.65rem 0 0;">The universe reads as space before it reads as interface.</p>
+            </article>
+            <article class="glass-card template-card">
+                <p class="mini-label">Shot 02</p>
+                <h2 style="margin: 0.5rem 0 0; font-size: 1.08rem;">Target acquisition</h2>
+                <p class="muted" style="margin: 0.65rem 0 0;">One stable star grows while neighbors remain spatially legible.</p>
+            </article>
+            <article class="glass-card template-card">
+                <p class="mini-label">Shot 03</p>
+                <h2 style="margin: 0.5rem 0 0; font-size: 1.08rem;">Approach damping</h2>
+                <p class="muted" style="margin: 0.65rem 0 0;">The move slows before UI appears, so the cut into reading feels authored.</p>
+            </article>
+            <article class="glass-card template-card">
+                <p class="mini-label">Shot 04</p>
+                <h2 style="margin: 0.5rem 0 0; font-size: 1.08rem;">Panel dock</h2>
+                <p class="muted" style="margin: 0.65rem 0 0;">Reader attaches beside the body instead of sitting on top of it like a modal.</p>
+            </article>
+        </section>
+    </main>
+
+    <div class="runtime-corner">
+        <div class="runtime-pill"><span id="runtimeLabel">Initializing WebGPU observatory...</span></div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.webgpu.min.js",
+                "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.webgpu.min.js",
+                "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.tsl.min.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script type="module">
+        import { bootObservatoryStage } from "./assets/observatory-stage.js";
+
+        bootObservatoryStage({
+            canvas: document.getElementById("sceneCanvas"),
+            preset: "cinematic",
+            statusEl: document.getElementById("runtimeLabel")
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universe OS - Signal Log</title>
+    <link rel="stylesheet" href="./assets/observatory-ui.css">
+    <style>
+        .cosmic-scrim {
+            background:
+                radial-gradient(circle at 44% 52%, transparent 0%, transparent 22%, rgba(3, 5, 10, 0.12) 46%, rgba(2, 4, 10, 0.42) 78%, rgba(2, 4, 10, 0.68) 100%),
+                linear-gradient(90deg, rgba(3, 5, 10, 0.16) 0%, rgba(3, 5, 10, 0.04) 46%, rgba(3, 5, 10, 0.18) 66%, rgba(3, 5, 10, 0.46) 100%);
+        }
+
+        .cosmic-shell {
+            min-height: calc(100vh - 2rem);
+            display: grid;
+            grid-template-columns: minmax(0, 0.84fr) minmax(0, 0.16fr);
+            align-items: center;
+            gap: clamp(1rem, 2vw, 2rem);
+        }
+
+        .cosmic-copy {
+            max-width: 35rem;
+            padding-top: clamp(1rem, 4vw, 3.6rem);
+            min-width: 0;
+        }
+
+        .cosmic-copy .lede {
+            max-width: 34rem;
+        }
+
+        .cosmic-floating-panel {
+            position: fixed;
+            right: clamp(1rem, 2vw, 1.8rem);
+            bottom: clamp(1rem, 2vw, 1.8rem);
+            z-index: 3;
+            width: min(24rem, calc(100vw - 2rem));
+            min-width: 0;
+        }
+
+        .cosmic-copy .hero-title {
+            font-size: clamp(3.2rem, 8vw, 6.1rem);
+            line-height: 0.88;
+        }
+
+        .cosmic-notes {
+            display: grid;
+            gap: 0.9rem;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            margin-top: 1.4rem;
+        }
+
+        .cosmic-notes .template-card {
+            min-height: 100%;
+        }
+
+        @media (max-width: 980px) {
+            .cosmic-scrim {
+                background:
+                    radial-gradient(circle at 52% 66%, rgba(3, 5, 10, 0.04) 0%, rgba(3, 5, 10, 0.1) 18%, rgba(3, 5, 10, 0.4) 46%, rgba(2, 4, 10, 0.76) 100%),
+                    linear-gradient(180deg, rgba(2, 4, 10, 0.78) 0%, rgba(2, 4, 10, 0.52) 24%, rgba(2, 4, 10, 0.22) 46%, rgba(2, 4, 10, 0.62) 100%),
+                    linear-gradient(90deg, rgba(2, 4, 10, 0.84) 0%, rgba(2, 4, 10, 0.48) 40%, rgba(2, 4, 10, 0.26) 70%, rgba(2, 4, 10, 0.56) 100%);
+            }
+
+            .cosmic-shell {
+                grid-template-columns: 1fr;
+                align-items: start;
+                min-height: auto;
+            }
+
+            .cosmic-shell > *,
+            .cosmic-copy,
+            .cosmic-copy .lede,
+            .cosmic-copy .toolbar,
+            .cosmic-notes,
+            .cosmic-floating-panel {
+                width: 100%;
+                max-width: 100%;
+                min-width: 0;
+            }
+
+            .cosmic-copy,
+            .cosmic-copy .lede,
+            .cosmic-copy .toolbar,
+            .cosmic-notes,
+            .cosmic-floating-panel {
+                inline-size: auto;
+            }
+
+            .cosmic-copy {
+                max-width: none;
+                padding-top: 0.5rem;
+                padding-right: 0.85rem;
+            }
+
+            .cosmic-copy .hero-title {
+                font-size: clamp(2.5rem, 11.5vw, 3.9rem);
+                line-height: 0.92;
+                max-width: 12rem;
+                text-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            }
+
+            .cosmic-copy .lede {
+                max-width: 23rem;
+                font-size: 1rem;
+                line-height: 1.62;
+                color: rgba(231, 237, 250, 0.96);
+                overflow-wrap: anywhere;
+                text-shadow: 0 4px 18px rgba(0, 0, 0, 0.38);
+            }
+
+            .cosmic-notes {
+                grid-template-columns: 1fr;
+                margin-top: 1.1rem;
+            }
+
+            .cosmic-floating-panel {
+                position: static;
+                width: 100%;
+                margin-top: 1.25rem;
+            }
+
+            .cosmic-floating-panel .panel-header {
+                flex-wrap: wrap;
+                justify-content: flex-start;
+            }
+
+            .runtime-corner {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body class="body-scroll">
+    <canvas id="sceneCanvas" class="scene-canvas" aria-hidden="true"></canvas>
+    <div class="scene-scrim cosmic-scrim"></div>
+
+    <main class="page-shell">
+        <section class="cosmic-shell">
+            <section class="cosmic-copy">
+                <p class="eyebrow">Universe OS // Signal Log</p>
+                <h1 class="hero-title display-serif">Status should read like observatory events, not toast spam.</h1>
+                <p class="lede">This page collects the transient language of the system: route changes, survey commits, cruise pauses, submission receipts, and local capability warnings. The UI stays lightweight, but every message still feels like it belongs inside a living observatory.</p>
+
+                <div class="toolbar" style="margin-top: 1.5rem;">
+                    <div class="pill">Route events</div>
+                    <div class="pill">Seed receipts</div>
+                    <div class="pill">Cruise notices</div>
+                    <div class="pill">Capability alerts</div>
+                </div>
+
+                <div class="cosmic-notes">
+                    <article class="glass-card template-card">
+                        <p class="mini-label">Behavior</p>
+                        <h2 style="margin: 0.45rem 0 0; font-size: 1.12rem;">Short lived by default</h2>
+                        <p class="muted" style="margin: 0.65rem 0 0;">The log should surface events and then get out of the way, unless the user opens the full history drawer.</p>
+                    </article>
+                    <article class="glass-card template-card">
+                        <p class="mini-label">Tone</p>
+                        <h2 style="margin: 0.45rem 0 0; font-size: 1.12rem;">Precise, not dramatic</h2>
+                        <p class="muted" style="margin: 0.65rem 0 0;">A receipt can still feel poetic, but it should never make the user guess whether the action truly succeeded.</p>
+                    </article>
+                    <article class="glass-card template-card">
+                        <p class="mini-label">Placement</p>
+                        <h2 style="margin: 0.45rem 0 0; font-size: 1.12rem;">Near the current action</h2>
+                        <p class="muted" style="margin: 0.65rem 0 0;">Receipts should stay attached to the route or panel that caused them, not appear as anonymous global popups.</p>
+                    </article>
+                </div>
+            </section>
+
+            <div></div>
+        </section>
+
+        <aside class="glass-panel cosmic-floating-panel" style="padding: 1.15rem 1.2rem;" data-collapsible-panel>
+            <div class="panel-stack">
+                <div class="panel-header">
+                    <div>
+                        <p class="mini-label">Signal Grammar</p>
+                        <h2 style="margin: 0.45rem 0 0; font-size: 1.28rem;">Event language inside the shell</h2>
+                    </div>
+                    <div class="toolbar" style="justify-content: flex-end;">
+                        <div class="pill">Transient Feed</div>
+                        <button class="collapse-toggle" type="button" data-panel-toggle><span data-panel-toggle-text>Collapse</span></button>
+                    </div>
+                </div>
+
+                <article class="glass-card" style="padding: 1rem 1.05rem;" data-panel-body>
+                    <strong>Recent observatory events</strong>
+                    <div class="list-panel" style="margin-top: 0.8rem;">
+                        <div class="list-item">
+                            <span class="list-index">1</span>
+                            <div><strong>Survey locked to “distributed systems basin”</strong><div class="muted">Search pulled the camera into atlas height and highlighted 24 visible candidates.</div></div>
+                        </div>
+                        <div class="list-item">
+                            <span class="list-index">2</span>
+                            <div><strong>Seed received • receipt SU-1142</strong><div class="muted">A draft document entered Seed Dock and now waits in the moderated queue.</div></div>
+                        </div>
+                        <div class="list-item">
+                            <span class="list-index">3</span>
+                            <div><strong>Cruise paused by direct input</strong><div class="muted">Mouse movement returned control to the user without rebuilding the scene.</div></div>
+                        </div>
+                        <div class="list-item">
+                            <span class="list-index">4</span>
+                            <div><strong>Reduced motion enabled</strong><div class="muted">The shell kept the route state but softened nonessential optical animation.</div></div>
+                        </div>
+                    </div>
+                </article>
+
+                <div class="metrics" data-panel-body>
+                    <div class="metric-card">
+                        <span class="mini-label">Default Lifetime</span>
+                        <span class="metric-value">4s</span>
+                        <span class="muted">Enough to notice a state change without letting the log become environmental clutter.</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="mini-label">Escalation Rule</span>
+                        <span class="metric-value">Sticky on fail</span>
+                        <span class="muted">Failures and moderation receipts persist until explicitly dismissed or inspected.</span>
+                    </div>
+                </div>
+
+                <div class="status-inline" data-panel-body>
+                    <div class="pill">Info</div>
+                    <div class="pill">Receipt</div>
+                    <div class="pill">Warning</div>
+                    <div class="pill">Failure</div>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <div class="runtime-corner">
+        <div class="runtime-pill"><span id="runtimeLabel">Initializing Universe OS signal runtime...</span></div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.webgpu.min.js",
+                "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.webgpu.min.js",
+                "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.tsl.min.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script type="module">
+        import { bootObservatoryStage } from "./assets/observatory-stage.js";
+        import { bootCollapsiblePanels } from "./assets/panel-collapse.js";
+
+        bootCollapsiblePanels();
+        bootObservatoryStage({
+            canvas: document.getElementById("sceneCanvas"),
+            preset: "signalLog",
+            statusEl: document.getElementById("runtimeLabel")
+        });
+    </script>
+</body>
+</html>

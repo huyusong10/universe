@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universe OS - Clear / Cruise Sequence</title>
+    <link rel="stylesheet" href="./assets/observatory-ui.css">
+</head>
+<body class="cinematic-bars">
+    <canvas id="sceneCanvas" class="scene-canvas" aria-hidden="true"></canvas>
+    <div class="scene-scrim scene-scrim--center"></div>
+
+    <main class="page-shell" style="display: grid; min-height: 100vh; align-content: space-between; gap: 2rem;">
+        <header class="panel-header" style="padding-top: 0.4rem;">
+            <div class="status-inline">
+                <div class="pill">Clear state active</div>
+                <div class="pill">Cruise route engaged</div>
+            </div>
+            <div class="runtime-pill" style="position: static;"><span>Current hop 03 / 12</span></div>
+        </header>
+
+        <section class="page-grid page-grid--hero" style="min-height: auto; align-items: end; padding-top: 12vh;">
+            <div></div>
+
+            <article class="glass-panel" style="padding: 1.2rem 1.25rem; max-width: 28rem; justify-self: end;" data-collapsible-panel>
+                <div class="panel-header">
+                    <p class="eyebrow" style="margin: 0;">Clear / Cruise // Guided Observation</p>
+                    <button class="collapse-toggle" type="button" data-panel-toggle><span data-panel-toggle-text>Collapse</span></button>
+                </div>
+                <div data-panel-body>
+                <h1 class="display-serif" style="margin: 0.45rem 0 0; font-size: clamp(2.6rem, 5vw, 4.4rem); line-height: 0.92;">Move the camera like an observatory, not like a game.</h1>
+                <p class="lede" style="margin-top: 1rem;">Clear mode strips the shell almost silent, then cruise carries the viewer through a guided observation path. One target star dominates the frame, one sentence explains why the stop matters, and the controls stay docked until the viewer asks for them.</p>
+
+                <div class="panel-stack" style="margin-top: 1.2rem;">
+                    <div class="glass-card" style="padding: 1rem 1.05rem;">
+                        <p class="mini-label">Now Observing</p>
+                        <div class="status-inline" style="margin-top: 0.6rem;">
+                            <div class="pill">Consensus Protocols</div>
+                            <div class="pill">Distance 1.8 AU</div>
+                        </div>
+                        <p class="muted" style="margin: 0.8rem 0 0;">Agreement machinery that stabilizes distributed systems once independent nodes need one shared sequence of truth.</p>
+                    </div>
+                    <div class="muted">Cruise may start from explicit Clear or after twenty seconds of idleness, but the visual language stays the same: low HUD, soft optics, and easy interruption.</div>
+                </div>
+                </div>
+            </article>
+        </section>
+
+        <footer class="panel-stack" style="padding-bottom: 7vh;">
+            <div class="progress-rail">
+                <div class="progress-fill"></div>
+            </div>
+
+            <div class="toolbar" style="justify-content: center;">
+                <button class="ghost-button">Pause Cruise</button>
+                <button class="ghost-button">Skip Stop</button>
+                <button class="primary-button">Exit to Roam</button>
+            </div>
+
+            <div class="status-inline" style="justify-content: center;">
+                <span class="muted">Controls stay hidden until needed so the cinematic band keeps its scale.</span>
+            </div>
+        </footer>
+    </main>
+
+    <div class="runtime-corner">
+        <div class="runtime-pill"><span id="runtimeLabel">Initializing Universe OS cruise runtime...</span></div>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.webgpu.min.js",
+                "three/webgpu": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.webgpu.min.js",
+                "three/tsl": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.tsl.min.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script type="module">
+        import { bootObservatoryStage } from "./assets/observatory-stage.js";
+        import { bootCollapsiblePanels } from "./assets/panel-collapse.js";
+
+        bootCollapsiblePanels();
+        bootObservatoryStage({
+            canvas: document.getElementById("sceneCanvas"),
+            preset: "cruise",
+            statusEl: document.getElementById("runtimeLabel")
+        });
+    </script>
+</body>
+</html>
