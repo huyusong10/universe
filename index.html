@@ -3,6 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>100,000 Stars Style Observatory</title>
     <style>
       :root {
@@ -129,16 +132,8 @@
         white-space: nowrap;
       }
 
-      .scale-axis__tick[data-level="local"] {
-        top: 0;
-      }
-
-      .scale-axis__tick[data-level="regional"] {
-        top: 50%;
-      }
-
-      .scale-axis__tick[data-level="galactic"] {
-        bottom: 0;
+      .scale-axis__tick {
+        top: calc((1 - var(--tick-progress)) * 100%);
       }
 
       .status,
@@ -170,8 +165,10 @@
       .debug {
         top: 22px;
         display: none;
+        max-width: min(74vw, 1100px);
         font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-        white-space: pre;
+        white-space: normal;
+        overflow-wrap: anywhere;
       }
 
       .debug[data-enabled="true"] {
@@ -222,9 +219,11 @@
       <canvas class="scene-canvas" id="scene" aria-label="Scalable galactic star map"></canvas>
       <canvas class="label-canvas" id="labels" aria-hidden="true"></canvas>
       <div class="scale-axis" id="scale-axis" aria-hidden="true">
-        <span class="scale-axis__tick" data-level="local" data-label="Local"></span>
-        <span class="scale-axis__tick" data-level="regional" data-label="Regional"></span>
-        <span class="scale-axis__tick" data-level="galactic" data-label="Galactic"></span>
+        <span class="scale-axis__tick" data-level="surface" data-label="Surface" style="--tick-progress: 0.89"></span>
+        <span class="scale-axis__tick" data-level="system" data-label="System" style="--tick-progress: 0.68"></span>
+        <span class="scale-axis__tick" data-level="local" data-label="Local" style="--tick-progress: 0.51"></span>
+        <span class="scale-axis__tick" data-level="regional" data-label="Regional" style="--tick-progress: 0.31"></span>
+        <span class="scale-axis__tick" data-level="galactic" data-label="Galactic" style="--tick-progress: 0.09"></span>
         <span class="scale-axis__dot"></span>
       </div>
       <div class="status" id="status" aria-live="polite"></div>
@@ -233,7 +232,11 @@
     </main>
 
     <script type="module">
-      import { bootStarsObservatory } from "./assets/stars-observatory-runtime.js";
+      const BUILD_VERSION = "newnew-stars-observatory-20260501e";
+      const cacheKey = `${BUILD_VERSION}-${Date.now().toString(36)}`;
+      const runtimeUrl = new URL("./assets/stars-observatory-runtime.js", window.location.href);
+      runtimeUrl.searchParams.set("v", cacheKey);
+      const { bootStarsObservatory } = await import(runtimeUrl.href);
 
       bootStarsObservatory({
         root: document.getElementById("observatory"),

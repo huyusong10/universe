@@ -1,4 +1,4 @@
-const VERSION = "newnew-stars-observatory-20260428e";
+const VERSION = "newnew-stars-observatory-20260501e";
 
 const COPY = {
   en: {
@@ -39,6 +39,13 @@ function intParam(params, key, fallback, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+function formatDebugNumber(value, digits = 2) {
+  if (!Number.isFinite(value)) return String(value);
+  const abs = Math.abs(value);
+  if (abs > 0 && abs < 0.01) return value.toExponential(2);
+  return value.toFixed(digits);
+}
+
 function canvasPoint(event, canvas) {
   const rect = canvas.getBoundingClientRect();
   return {
@@ -63,9 +70,10 @@ function setStatus(element, text, ready = false) {
 
 function updateScaleAxis(element, state) {
   if (!element || !state) return;
-  const progress = Math.max(0, Math.min(1, state.zoomT || 0));
+  const progress = Math.max(0, Math.min(1, state.scaleAxisProgress ?? state.zoomT ?? 0));
   element.style.setProperty("--scale-progress", progress.toFixed(4));
   element.dataset.lod = state.lod || "Galactic";
+  element.dataset.stage = state.scaleStage || state.lod || "Galactic";
 }
 
 export function bootStarsObservatory(options) {
@@ -102,7 +110,9 @@ export function bootStarsObservatory(options) {
 
   setStatus(status, copy.boot);
 
-  const workerUrl = new URL(`./stars-observatory-worker.js?v=${VERSION}`, import.meta.url);
+  const workerCacheKey = `${VERSION}-${Date.now().toString(36)}`;
+  const workerUrl = new URL("./stars-observatory-worker.js", import.meta.url);
+  workerUrl.searchParams.set("v", workerCacheKey);
   const worker = new Worker(workerUrl, {
     type: "module",
     name: "newnew-stars-observatory-worker"
@@ -153,16 +163,82 @@ export function bootStarsObservatory(options) {
       updateScaleAxis(scaleAxis, message.state);
       if (debugEnabled && debug) {
         const state = message.state;
-        debug.textContent = [
+        const lines = [
+          `version=${VERSION}`,
           `lod=${state.lod}`,
-          `scale=${state.scale.toFixed(2)}`,
+          `scaleStage=${state.scaleStage || state.lod}`,
+          `scale=${formatDebugNumber(state.scale)}`,
           `catalog=${state.catalog}`,
           `draw=${state.draw}`,
           `labels=${state.labels}`,
           `gpu=${state.gpu}`,
           `fps=${state.fps.toFixed(0)}`,
           `active=${state.active}`
-        ].join("  ");
+        ];
+        if (state.starModel) lines.push(`starModel=${state.starModel}`);
+        if (state.stellarMaterial) lines.push(`stellarMaterial=${state.stellarMaterial}`);
+        if (Number.isFinite(state.rotationPhase)) lines.push(`rotationPhase=${state.rotationPhase.toFixed(3)}`);
+        if (Number.isFinite(state.activity)) lines.push(`activity=${state.activity.toFixed(2)}`);
+        if (Number.isFinite(state.bridge)) lines.push(`bridge=${state.bridge.toFixed(2)}`);
+        if (Number.isFinite(state.exposure)) lines.push(`exposure=${state.exposure.toFixed(2)}`);
+        if (Number.isFinite(state.localReference)) lines.push(`localReference=${state.localReference.toFixed(2)}`);
+        if (Number.isFinite(state.localApproach)) lines.push(`localApproach=${state.localApproach.toFixed(2)}`);
+        if (Number.isFinite(state.scaleDepth)) lines.push(`scaleDepth=${state.scaleDepth.toFixed(3)}`);
+        if (Number.isFinite(state.scaleAxisProgress)) lines.push(`scaleAxisProgress=${state.scaleAxisProgress.toFixed(3)}`);
+        if (Number.isFinite(state.metricCatalogPresence)) lines.push(`metricCatalogPresence=${state.metricCatalogPresence.toFixed(2)}`);
+        if (Number.isFinite(state.metricLayerPresence)) lines.push(`metricLayerPresence=${state.metricLayerPresence.toFixed(2)}`);
+        if (Number.isFinite(state.metricLayerPointScale)) lines.push(`metricLayerPointScale=${state.metricLayerPointScale.toFixed(2)}`);
+        if (Number.isFinite(state.metricLayerHaloScale)) lines.push(`metricLayerHaloScale=${state.metricLayerHaloScale.toFixed(2)}`);
+        if (Number.isFinite(state.metricLayerLabelWeight)) lines.push(`metricLayerLabelWeight=${state.metricLayerLabelWeight.toFixed(2)}`);
+        if (Number.isFinite(state.metricLayerPickWeight)) lines.push(`metricLayerPickWeight=${state.metricLayerPickWeight.toFixed(2)}`);
+        if (Number.isFinite(state.metricLayerOpacity)) lines.push(`metricLayerOpacity=${state.metricLayerOpacity.toFixed(2)}`);
+        if (Number.isFinite(state.galacticLayerPresence)) lines.push(`galacticLayerPresence=${state.galacticLayerPresence.toFixed(2)}`);
+        if (Number.isFinite(state.galacticLayerPointScale)) lines.push(`galacticLayerPointScale=${state.galacticLayerPointScale.toFixed(2)}`);
+        if (Number.isFinite(state.galacticLayerHaloScale)) lines.push(`galacticLayerHaloScale=${state.galacticLayerHaloScale.toFixed(2)}`);
+        if (Number.isFinite(state.galacticLayerLabelWeight)) lines.push(`galacticLayerLabelWeight=${state.galacticLayerLabelWeight.toFixed(2)}`);
+        if (Number.isFinite(state.galacticLayerPickWeight)) lines.push(`galacticLayerPickWeight=${state.galacticLayerPickWeight.toFixed(2)}`);
+        if (Number.isFinite(state.regionalLayerPresence)) lines.push(`regionalLayerPresence=${state.regionalLayerPresence.toFixed(2)}`);
+        if (Number.isFinite(state.regionalLayerPointScale)) lines.push(`regionalLayerPointScale=${state.regionalLayerPointScale.toFixed(2)}`);
+        if (Number.isFinite(state.regionalLayerHaloScale)) lines.push(`regionalLayerHaloScale=${state.regionalLayerHaloScale.toFixed(2)}`);
+        if (Number.isFinite(state.regionalLayerLabelWeight)) lines.push(`regionalLayerLabelWeight=${state.regionalLayerLabelWeight.toFixed(2)}`);
+        if (Number.isFinite(state.regionalLayerPickWeight)) lines.push(`regionalLayerPickWeight=${state.regionalLayerPickWeight.toFixed(2)}`);
+        if (Number.isFinite(state.localMapLayerPresence)) lines.push(`localMapLayerPresence=${state.localMapLayerPresence.toFixed(2)}`);
+        if (Number.isFinite(state.localMapLayerPointScale)) lines.push(`localMapLayerPointScale=${state.localMapLayerPointScale.toFixed(2)}`);
+        if (Number.isFinite(state.localMapLayerHaloScale)) lines.push(`localMapLayerHaloScale=${state.localMapLayerHaloScale.toFixed(2)}`);
+        if (Number.isFinite(state.localMapLayerLabelWeight)) lines.push(`localMapLayerLabelWeight=${state.localMapLayerLabelWeight.toFixed(2)}`);
+        if (Number.isFinite(state.localMapLayerPickWeight)) lines.push(`localMapLayerPickWeight=${state.localMapLayerPickWeight.toFixed(2)}`);
+        if (Number.isFinite(state.localSystemLayerPresence)) lines.push(`localSystemLayerPresence=${state.localSystemLayerPresence.toFixed(2)}`);
+        if (Number.isFinite(state.localSystemLayerPointScale)) lines.push(`localSystemLayerPointScale=${state.localSystemLayerPointScale.toFixed(2)}`);
+        if (Number.isFinite(state.localSystemLayerLabelWeight)) lines.push(`localSystemLayerLabelWeight=${state.localSystemLayerLabelWeight.toFixed(2)}`);
+        if (Number.isFinite(state.localSystemLayerPickWeight)) lines.push(`localSystemLayerPickWeight=${state.localSystemLayerPickWeight.toFixed(2)}`);
+        if (Number.isFinite(state.surfaceLayerPresence)) lines.push(`surfaceLayerPresence=${state.surfaceLayerPresence.toFixed(2)}`);
+        if (Number.isFinite(state.surfaceLayerPointScale)) lines.push(`surfaceLayerPointScale=${state.surfaceLayerPointScale.toFixed(2)}`);
+        if (Number.isFinite(state.surfaceLayerLabelWeight)) lines.push(`surfaceLayerLabelWeight=${state.surfaceLayerLabelWeight.toFixed(2)}`);
+        if (Number.isFinite(state.surfaceLayerPickWeight)) lines.push(`surfaceLayerPickWeight=${state.surfaceLayerPickWeight.toFixed(2)}`);
+        if (Number.isFinite(state.celestialBackdropPresence)) lines.push(`celestialBackdropPresence=${state.celestialBackdropPresence.toFixed(2)}`);
+        if (Number.isFinite(state.localSystemPresence)) lines.push(`localSystemPresence=${state.localSystemPresence.toFixed(2)}`);
+        if (Number.isFinite(state.surfaceViewRadiusStarR)) lines.push(`surfaceViewRadiusStarR=${state.surfaceViewRadiusStarR.toFixed(2)}`);
+        if (Number.isFinite(state.contextScale)) lines.push(`contextScale=${state.contextScale.toFixed(2)}`);
+        if (Number.isFinite(state.activeImpostorScale)) lines.push(`activeImpostorScale=${state.activeImpostorScale.toFixed(2)}`);
+        if (Number.isFinite(state.approach)) lines.push(`approach=${state.approach.toFixed(2)}`);
+        if (Number.isFinite(state.surface)) lines.push(`surface=${state.surface.toFixed(2)}`);
+        if (Number.isFinite(state.surfacePresence)) lines.push(`surfacePresence=${state.surfacePresence.toFixed(2)}`);
+        if (Number.isFinite(state.scaleTarget)) lines.push(`scaleTarget=${formatDebugNumber(state.scaleTarget)}`);
+        if (Number.isFinite(state.cameraFov)) lines.push(`cameraFov=${state.cameraFov.toFixed(2)}`);
+        if (Number.isFinite(state.distance)) lines.push(`distance=${state.distance.toFixed(1)}`);
+        if (Number.isFinite(state.distanceTarget)) lines.push(`distanceTarget=${state.distanceTarget.toFixed(1)}`);
+        if (Number.isFinite(state.surfaceRadius)) lines.push(`surfaceRadius=${state.surfaceRadius.toFixed(1)}`);
+        if (Number.isFinite(state.sphereRadius)) lines.push(`sphereRadius=${state.sphereRadius.toFixed(4)}`);
+        if (Number.isFinite(state.sphereScreenRadius)) lines.push(`sphereScreenRadius=${state.sphereScreenRadius.toFixed(1)}`);
+        if (Number.isFinite(state.sphereTriangles)) lines.push(`sphereTriangles=${state.sphereTriangles.toFixed(0)}`);
+        if (Number.isFinite(state.sphereDraw)) lines.push(`sphereDraw=${state.sphereDraw.toFixed(0)}`);
+        if (Number.isFinite(state.sphereVisibility)) lines.push(`sphereVisibility=${state.sphereVisibility.toFixed(2)}`);
+        if (Number.isFinite(state.localMapContext)) lines.push(`localMapContext=${state.localMapContext.toFixed(2)}`);
+        if (Number.isFinite(state.activeX)) lines.push(`activeX=${state.activeX.toFixed(1)}`);
+        if (Number.isFinite(state.activeY)) lines.push(`activeY=${state.activeY.toFixed(1)}`);
+        if (Number.isFinite(state.activeLabelX)) lines.push(`activeLabelX=${state.activeLabelX.toFixed(1)}`);
+        if (Number.isFinite(state.activeLabelY)) lines.push(`activeLabelY=${state.activeLabelY.toFixed(1)}`);
+        debug.textContent = lines.join("  ");
       }
       return;
     }
