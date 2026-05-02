@@ -34,6 +34,7 @@ function boolParam(params, key) {
 function intParam(params, key, fallback, min, max) {
   const raw = params.get(key);
   if (raw == null || raw === "") return fallback;
+  if (!/^-?\d+$/.test(raw)) return fallback;
   const value = Number.parseInt(raw, 10);
   if (!Number.isFinite(value)) return fallback;
   return Math.max(min, Math.min(max, value));
