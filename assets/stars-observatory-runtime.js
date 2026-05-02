@@ -71,7 +71,8 @@ function setStatus(element, text, ready = false) {
 
 function updateScaleAxis(element, state) {
   if (!element || !state) return;
-  const progress = Math.max(0, Math.min(1, state.scaleAxisProgress ?? state.zoomT ?? 0));
+  let progress = state.scaleAxisProgress ?? state.zoomT ?? 0;
+  progress = Number.isFinite(progress) ? Math.max(0, Math.min(1, progress)) : 0;
   element.style.setProperty("--scale-progress", progress.toFixed(4));
   element.dataset.lod = state.lod || "Galactic";
   element.dataset.stage = state.scaleStage || state.lod || "Galactic";
