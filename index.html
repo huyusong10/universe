@@ -236,17 +236,32 @@
       const cacheKey = `${BUILD_VERSION}-${Date.now().toString(36)}`;
       const runtimeUrl = new URL("./assets/stars-observatory-runtime.js", window.location.href);
       runtimeUrl.searchParams.set("v", cacheKey);
-      const { bootStarsObservatory } = await import(runtimeUrl.href);
 
-      bootStarsObservatory({
-        root: document.getElementById("observatory"),
-        scene: document.getElementById("scene"),
-        labels: document.getElementById("labels"),
-        scaleAxis: document.getElementById("scale-axis"),
-        status: document.getElementById("status"),
-        debug: document.getElementById("debug"),
-        unsupported: document.getElementById("unsupported")
-      });
+      const status = document.getElementById("status");
+      const unsupported = document.getElementById("unsupported");
+
+      try {
+        const { bootStarsObservatory } = await import(runtimeUrl.href);
+        bootStarsObservatory({
+          root: document.getElementById("observatory"),
+          scene: document.getElementById("scene"),
+          labels: document.getElementById("labels"),
+          scaleAxis: document.getElementById("scale-axis"),
+          status: status,
+          debug: document.getElementById("debug"),
+          unsupported: unsupported
+        });
+      } catch (err) {
+        const message = err?.message || "Failed to load the star map runtime.";
+        if (status) {
+          status.textContent = message;
+          status.dataset.hidden = "false";
+        }
+        if (unsupported) {
+          unsupported.textContent = message;
+          unsupported.dataset.visible = "true";
+        }
+      }
     </script>
   </body>
 </html>
