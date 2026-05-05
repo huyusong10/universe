@@ -10,15 +10,23 @@ const GALACTIC_DISTANCE = 18000;
 const REGIONAL_DISTANCE = 2400;
 const LOCAL_MAP_DISTANCE = 1100;
 const LOCAL_SYSTEM_DISTANCE = 220;
-const SURFACE_FULL_DISTANCE = 58;
+const SURFACE_FULL_DISTANCE = 30;
+const SURFACE_STAGE_READINESS = 0.25;
+const SURFACE_RADIUS_FULL = 0.82;
+const SURFACE_READINESS_FULL = 0.95;
+const ACTIVE_HANDOFF_START = 0.08;
+const ACTIVE_HANDOFF_PRIMARY = 0.42;
 const GALACTIC_REGIONAL_BLEND_START = 17000;
 const GALACTIC_REGIONAL_BLEND_END = 26000;
+const REGIONAL_LOCAL_BLEND_END = 6500;
 const CATALOG_PROJECTION_FLOOR_DISTANCE = LOCAL_SYSTEM_DISTANCE;
 const WHEEL_ZOOM_SPEED = 0.00078;
 const WHEEL_ZOOM_SPEED_PRECISE = 0.00108;
+const WHEEL_FRAME_DELTA_CAP = 900;
+const WHEEL_ACTIVE_DECAY_MS = 220;
 const CAMERA_DISTANCE_FOLLOW = 0.125;
 const FOCUS_FLIGHT_MS = 1700;
-const FOCUS_APPROACH_DISTANCE = 128;
+const FOCUS_APPROACH_DISTANCE = 108;
 const SPHERE_LAT_SEGMENTS = 48;
 const SPHERE_LON_SEGMENTS = 96;
 
@@ -96,6 +104,17 @@ const approach = {
   index: -1,
   progress: 0,
   target: 0
+};
+
+const wheelInput = {
+  deltaY: 0,
+  ctrlKey: false,
+  activeUntil: 0
+};
+
+const opticalSmoothing = {
+  initialized: false,
+  values: Object.create(null)
 };
 
 const labels = {
@@ -183,19 +202,22 @@ fn vertexMain(
   let catalogExit = clamp(u.optics.w, 0.0, 1.0);
   let backgroundRetreat = smoother(0.08, 0.92, catalogExit);
   let surfacePresence = clamp(u.interaction.w, 0.0, 1.0);
-  let activeHandoff = smoother(0.18, 0.90, surfacePresence);
+  let activeHandoff = smoother(0.08, 0.42, surfacePresence);
   let metricOpacity = clamp(u.layerOptics.z, 0.0, 1.0);
-  let metricPointScale = clamp(u.layerOptics.x, 0.0, 1.0);
+  let metricCoreVisibility = clamp(u.layerOptics.w, 0.0, 1.0);
   let surfaceContextFade = max(0.015, metricOpacity * (1.0 - backgroundRetreat * 0.54));
+  let coreRetreat = smoother(0.08, 0.92, 1.0 - metricCoreVisibility);
+  let starCoreContextFade = max(0.018, metricCoreVisibility * (1.0 - coreRetreat * 0.18));
+  let mapContinuityCompensation = clamp(u.layerOptics.x, 0.0, 1.0);
   let dustVisibility = params.x * (0.48 + u.optics.z * 0.42 + u.optics.y * 0.20) * surfaceContextFade;
   var visibility = select(dustVisibility, starVisibilityValue, isStar);
-  visibility = select(visibility, visibility * surfaceContextFade, isStar && !(isActive || hover));
-  let activeForcedVisibility = max(visibility, 0.98 * (1.0 - activeHandoff * 0.82));
+  visibility = select(visibility, visibility * starCoreContextFade, isStar && !(isActive || hover));
+  let activeForcedVisibility = max(visibility, 0.82 * (1.0 - activeHandoff) + 0.08);
   let hoverForcedVisibility = max(visibility, 0.86 * (1.0 - backgroundRetreat * 0.28));
   let forcedVisibility = select(select(visibility, hoverForcedVisibility, hover), activeForcedVisibility, isActive);
   var starRadius =
     params.y *
-    (0.88 + u.view.y * 1.72) *
+    max(0.88 + u.view.y * 1.72, 1.10 + mapContinuityCompensation * 0.50) *
     (0.65 + params.z * 1.7) *
     activeBoost *
     (1.0 + bridgePresence * 0.72);
@@ -204,12 +226,20 @@ fn vertexMain(
   let localSizeLift = 1.0 + nearScale * (scaleMagnification - 1.0) * (0.22 + params.z * 0.78);
   let activeNearLift = select(1.0, 1.0 + nearScale * min(3.8, 0.30 / max(u.targetScale.w, 0.035)), isActive);
   starRadius = starRadius * localSizeLift * activeNearLift;
+  let mapOpticalApproach =
+    smoother(0.06, 0.30, u.view.y) *
+    (1.0 - smoother(0.58, 0.78, u.view.y)) *
+    metricCoreVisibility *
+    (1.0 - backgroundRetreat) *
+    mapContinuityCompensation;
+  starRadius = starRadius * (1.0 + mapOpticalApproach * 0.42);
   let backgroundRadiusScale = max(0.055, 1.0 - backgroundRetreat * 0.945);
-  let hoverRadiusScale = max(backgroundRadiusScale, 0.70);
-  let activeRadiusScale = max(0.12, 1.0 - activeHandoff * 0.88);
-  let radiusContextScale = select(select(backgroundRadiusScale, hoverRadiusScale, hover), activeRadiusScale, isActive);
+  let coreRadiusScale = max(0.16, 1.0 - coreRetreat * 0.84);
+  let hoverRadiusScale = max(coreRadiusScale, 0.70);
+  let activeCoreHandoff = smoother(0.26, 0.78, surfacePresence);
+  let activeRadiusScale = max(0.14, 1.0 - activeCoreHandoff * 0.86);
+  let radiusContextScale = select(select(coreRadiusScale, hoverRadiusScale, hover), activeRadiusScale, isActive);
   starRadius = starRadius * radiusContextScale;
-  starRadius = select(starRadius * metricPointScale, starRadius, isActive || hover);
   let radiusCap = select(56.0 + params.z * 38.0, 220.0, isActive);
   starRadius = min(starRadius, radiusCap);
   let dustRadius = params.y * (0.50 + u.view.y * 0.10 + u.optics.y * 0.08);
@@ -233,26 +263,40 @@ fn fragmentMain(in: VertexOut) -> @location(0) vec4f {
     discard;
   }
   let isStar = in.extra.y > 0.5;
-  let core = exp(-d * d * 82.0);
-  let psf = exp(-d * d * 18.0);
-  let halo = exp(-d * d * 4.2);
-  let outer = exp(-d * d * 1.35);
-  let bridge = in.params.z * in.params.z * in.extra.y * 0.08 * u.optics.y;
-  let activeHandoff = smoother(0.18, 0.90, clamp(u.interaction.w, 0.0, 1.0));
+  let core = exp(-d * d * 96.0);
+  let psf = exp(-d * d * 22.0);
+  let halo = exp(-d * d * 5.8);
+  let outer = exp(-d * d * 2.1);
+  let bridge = in.params.z * in.params.z * in.extra.y * 0.040 * u.optics.y;
+  let activeHandoff = smoother(0.08, 0.42, clamp(u.interaction.w, 0.0, 1.0));
+  let activeCoreHandoff = smoother(0.26, 0.78, clamp(u.interaction.w, 0.0, 1.0));
   let activeStar = isStar && abs(in.extra.x - u.interaction.x) < 0.5;
-  let metricOpacity = select(clamp(u.layerOptics.z, 0.0, 1.0), 1.0, activeStar);
   let metricHaloScale = select(clamp(u.layerOptics.y, 0.0, 1.0), 1.0, activeStar);
-  let activeSurfaceFade = select(1.0, max(0.015, 1.0 - activeHandoff * 0.96), activeStar);
-  let crowdEnergy = 0.70 - u.optics.y * 0.16 - u.optics.z * 0.06;
+  let metricCoreVisibility = select(clamp(u.layerOptics.w, 0.0, 1.0), 1.0, activeStar);
+  let catalogExit = clamp(u.optics.w, 0.0, 1.0);
+  let backgroundRetreat = smoother(0.08, 0.92, catalogExit);
+  let mapContinuityCompensation = clamp(u.layerOptics.x, 0.0, 1.0);
+  let mapOpticalApproach =
+    smoother(0.06, 0.30, u.view.y) *
+    (1.0 - smoother(0.58, 0.78, u.view.y)) *
+    metricCoreVisibility *
+    (1.0 - backgroundRetreat) *
+    mapContinuityCompensation;
+  let psfContinuity = max(metricHaloScale, metricCoreVisibility * 0.72);
+  let activeCoreFade = select(1.0, max(0.28, 1.0 - activeCoreHandoff * 0.72), activeStar);
+  let activeHaloFade = select(1.0, max(0.010, 1.0 - activeHandoff * 0.990), activeStar);
+  let crowdEnergy = 0.76 - u.optics.y * 0.14 - u.optics.z * 0.05;
+  let mapEnergyLift = 1.0 + mapOpticalApproach * 0.72;
   let starEnergy =
     in.alpha *
-    (core * (0.92 + in.params.x * 0.22) * activeSurfaceFade * metricOpacity +
-      psf * (0.20 + in.params.z * 0.15) * mix(1.0, activeSurfaceFade, 0.82) * metricHaloScale +
-      halo * (0.050 + in.params.z * 0.050 + bridge) * metricHaloScale +
-      outer * (0.010 + in.params.z * 0.016 + bridge * 0.42) * metricHaloScale) *
+    (core * (1.08 + in.params.x * 0.28) * activeCoreFade +
+      psf * (0.16 + in.params.z * 0.11) * mix(1.0, activeHaloFade, 0.64) * psfContinuity +
+      halo * (0.026 + in.params.z * 0.030 + bridge) * activeHaloFade * metricHaloScale +
+      outer * (0.004 + in.params.z * 0.007 + bridge * 0.22) * activeHaloFade * metricHaloScale) *
     u.optics.x *
-    crowdEnergy;
-  let dustAlpha = in.alpha * exp(-d * d * 5.4) * (0.035 + u.optics.z * 0.026 + u.optics.y * 0.014);
+    crowdEnergy *
+    mapEnergyLift;
+  let dustAlpha = in.alpha * exp(-d * d * 7.2) * (0.024 + u.optics.z * 0.016 + u.optics.y * 0.008);
   let alpha = clamp(select(dustAlpha, starEnergy, isStar), 0.0, 0.92);
   let bridgeWhite = clamp(core * 0.48 + u.optics.y * in.params.z * 0.10, 0.0, 0.68);
   let starColor = mix(in.color, vec3f(1.0, 0.96, 0.86), bridgeWhite);
@@ -397,7 +441,8 @@ fn fragmentMain(in: VertexOut) -> @location(0) vec4f {
   let grainEmission = mix(coolTint, hotTint, colorTemperature * 0.45 + 0.24) * pow(plasma.x, 2.0) * (0.18 + activity * 0.18);
   let body = base * surfaceEnergy * limbDarkening * (0.98 + activity * 0.16);
   let basalEmission = base * (0.30 + lum * 0.05);
-  let color = clamp((body + activeGlow + edgeEmission + basalEmission + grainEmission) * (1.02 + presence * 0.28), vec3f(0.03), vec3f(1.16));
+  let radiusAreaCompensation = mix(1.0, 0.80, smoothstep(180.0, 330.0, max(u.view.x, 0.0)));
+  let color = clamp((body + activeGlow + edgeEmission + basalEmission + grainEmission) * (1.02 + presence * 0.22) * radiusAreaCompensation, vec3f(0.03), vec3f(1.16));
   let alpha = clamp(presence * (0.82 + rim * 0.16), 0.0, 0.98);
   return vec4f(color, alpha);
 }
@@ -939,21 +984,6 @@ function projectionScaleForDistance(distance) {
   return clamp((INITIAL_SCALE * halfHeight) / referenceHalfHeight, MIN_SCALE, MAX_SCALE);
 }
 
-function distanceForProjectionScale(scale) {
-  const target = clamp(scale, MIN_SCALE, MAX_SCALE);
-  let lo = MIN_CAMERA_DISTANCE;
-  let hi = MAX_CAMERA_DISTANCE;
-  for (let i = 0; i < 44; i += 1) {
-    const mid = Math.exp((Math.log(lo) + Math.log(hi)) * 0.5);
-    if (projectionScaleForDistance(mid) < target) {
-      lo = mid;
-    } else {
-      hi = mid;
-    }
-  }
-  return clamp(hi, MIN_CAMERA_DISTANCE, MAX_CAMERA_DISTANCE);
-}
-
 function updateDerivedScale() {
   camera.scale = projectionScaleForDistance(camera.distance);
   camera.scaleTarget = projectionScaleForDistance(camera.distanceTarget);
@@ -965,7 +995,7 @@ function logDepthForDistance(distance, nearDistance, farDistance) {
   return clamp((maxLog - Math.log(clamp(distance, nearDistance, farDistance))) / (maxLog - minLog), 0, 1);
 }
 
-function semanticScaleAxisProgress(distance, surfacePresence) {
+function semanticScaleAxisProgress(distance, surfaceReadiness) {
   const value = clamp(distance, MIN_CAMERA_DISTANCE, MAX_CAMERA_DISTANCE);
   if (value >= GALACTIC_DISTANCE) {
     return mix(0, 0.18, smoothstep(0, 1, logDepthForDistance(value, GALACTIC_DISTANCE, MAX_CAMERA_DISTANCE)));
@@ -979,7 +1009,7 @@ function semanticScaleAxisProgress(distance, surfacePresence) {
   if (value >= LOCAL_SYSTEM_DISTANCE) {
     return mix(0.58, 0.78, smoothstep(0, 1, logDepthForDistance(value, LOCAL_SYSTEM_DISTANCE, LOCAL_MAP_DISTANCE)));
   }
-  return mix(0.78, 1, surfacePresence);
+  return mix(0.78, 1, surfaceReadiness);
 }
 
 function makeLayer(presence, pointScale, haloScale, labelWeight, pickWeight, opacity) {
@@ -993,19 +1023,31 @@ function makeLayer(presence, pointScale, haloScale, labelWeight, pickWeight, opa
   };
 }
 
-function scaleStageForDistance(distance) {
+function haloSuppressionForOverlap(...overlaps) {
+  const overlap = Math.max(0, ...overlaps);
+  return mix(1, 0.54, smoothstep(0.05, 0.32, overlap));
+}
+
+function applyHaloSuppression(layer, ...overlaps) {
+  layer.haloScale = clamp(layer.haloScale * haloSuppressionForOverlap(...overlaps), 0, 1);
+  return layer;
+}
+
+function scaleStageForDistance(distance, surfaceReadiness = 0) {
   if (distance >= GALACTIC_DISTANCE) return "Galactic";
   if (distance >= REGIONAL_DISTANCE) return "Regional";
   if (distance >= LOCAL_MAP_DISTANCE) return "LocalMap";
-  if (distance >= LOCAL_SYSTEM_DISTANCE) return "LocalSystem";
+  if (distance >= LOCAL_SYSTEM_DISTANCE || surfaceReadiness < SURFACE_STAGE_READINESS) return "LocalSystem";
   return "Surface";
 }
 
 function scaleModelForDistance(distance) {
   const value = clamp(distance, MIN_CAMERA_DISTANCE, MAX_CAMERA_DISTANCE);
   const surfacePresence = 1 - smoothstep(SURFACE_FULL_DISTANCE, LOCAL_SYSTEM_DISTANCE, value);
+  const surfaceReadiness = smoothstep(0.20, SURFACE_READINESS_FULL, surfacePresence);
+  const surfaceDepth = surfaceReadiness * logDepthForDistance(value, MIN_CAMERA_DISTANCE, LOCAL_SYSTEM_DISTANCE);
   const metricCatalogPresence = smoothstep(520, 1500, value);
-  const celestialBackdropPresence = 1 - smoothstep(620, 1600, value);
+  const celestialBackdropPresence = 1 - smoothstep(760, 1900, value);
   const localSystemPresence =
     (1 - smoothstep(360, LOCAL_MAP_DISTANCE, value)) *
     smoothstep(42, 140, value);
@@ -1016,17 +1058,26 @@ function scaleModelForDistance(distance) {
     MAX_CAMERA_DISTANCE
   );
   const regionalDepth = smoothstep(GALACTIC_DISTANCE, REGIONAL_DISTANCE, value);
+  const surfaceRadiusProgress = smoothstep(0.04, SURFACE_RADIUS_FULL, surfacePresence);
   const surfaceViewRadiusStarR = Math.exp(
-    mix(Math.log(7.5), Math.log(1.25), surfacePresence)
+    mix(
+      mix(Math.log(7.5), Math.log(1.65), surfaceRadiusProgress),
+      Math.log(0.98),
+      surfaceDepth * 0.86
+    )
   );
-  const scaleAxisProgress = semanticScaleAxisProgress(value, surfacePresence);
+  const scaleAxisProgress = semanticScaleAxisProgress(value, surfaceReadiness);
   const galacticLayerPresence = smoothstep(
     GALACTIC_REGIONAL_BLEND_START,
     GALACTIC_REGIONAL_BLEND_END,
     value
   );
   const galacticLayerPointCore = smoothstep(14000, 50000, value);
-  const galacticLayerHaloCore = smoothstep(GALACTIC_DISTANCE, 52000, value);
+  const galacticLayerHaloCore = mix(
+    0.68,
+    1,
+    smoothstep(GALACTIC_REGIONAL_BLEND_END, 52000, value)
+  );
   const galacticLayer = makeLayer(
     galacticLayerPresence,
     galacticLayerPresence * mix(0.12, 1, galacticLayerPointCore),
@@ -1037,18 +1088,21 @@ function scaleModelForDistance(distance) {
   );
   const regionalLayerPresence =
     (1 - smoothstep(GALACTIC_REGIONAL_BLEND_START, GALACTIC_REGIONAL_BLEND_END, value)) *
-    smoothstep(1500, 6500, value);
+    smoothstep(1500, REGIONAL_LOCAL_BLEND_END, value);
   const regionalPointCore = smoothstep(2200, 9000, value);
+  const regionalHaloCore =
+    (1 - smoothstep(11000, 17000, value)) *
+    smoothstep(2800, 9000, value);
   const regionalLayer = makeLayer(
     regionalLayerPresence,
     regionalLayerPresence * mix(0.14, 1, regionalPointCore),
-    regionalLayerPresence * smoothstep(2800, 11000, value),
+    regionalLayerPresence * regionalHaloCore * 0.74,
     regionalLayerPresence,
     regionalLayerPresence,
     regionalLayerPresence
   );
   const localMapLayerPresence =
-    (1 - smoothstep(REGIONAL_DISTANCE, 4200, value)) *
+    (1 - smoothstep(REGIONAL_DISTANCE, REGIONAL_LOCAL_BLEND_END, value)) *
     metricCatalogPresence;
   const localMapInteractionExit = 1 - smoothstep(0.18, 0.45, localSystemPresence);
   const localMapLabelWeight = localMapLayerPresence * localMapInteractionExit;
@@ -1063,7 +1117,7 @@ function scaleModelForDistance(distance) {
   );
   const localSystemLayerPresence =
     localSystemPresence *
-    (1 - smoothstep(0.28, 0.82, surfacePresence) * 0.78);
+    (1 - smoothstep(0.18, 0.82, surfaceReadiness) * 0.82);
   const localSystemLayer = makeLayer(
     localSystemLayerPresence,
     localSystemLayerPresence,
@@ -1073,12 +1127,31 @@ function scaleModelForDistance(distance) {
     localSystemLayerPresence
   );
   const surfaceLayer = makeLayer(
-    surfacePresence,
-    surfacePresence,
-    surfacePresence,
-    surfacePresence,
+    surfaceReadiness,
+    surfaceReadiness,
+    surfaceReadiness,
+    surfaceReadiness,
     0,
-    surfacePresence
+    surfaceReadiness
+  );
+  const galacticRegionalOverlap = Math.min(galacticLayer.presence, regionalLayer.presence);
+  const regionalLocalMapOverlap = Math.min(regionalLayer.presence, localMapLayer.presence);
+  const localMapSystemOverlap = Math.min(localMapLayer.presence, localSystemLayer.presence);
+  const localSystemSurfaceOverlap = Math.min(localSystemLayer.presence, surfaceLayer.presence);
+  applyHaloSuppression(galacticLayer, galacticRegionalOverlap);
+  applyHaloSuppression(regionalLayer, galacticRegionalOverlap, regionalLocalMapOverlap);
+  applyHaloSuppression(localMapLayer, regionalLocalMapOverlap, localMapSystemOverlap);
+  applyHaloSuppression(localSystemLayer, localMapSystemOverlap, localSystemSurfaceOverlap);
+  applyHaloSuppression(surfaceLayer, localSystemSurfaceOverlap);
+  const haloOverlapStrength = smoothstep(
+    0.05,
+    0.32,
+    Math.max(
+      galacticRegionalOverlap,
+      regionalLocalMapOverlap,
+      localMapSystemOverlap,
+      localSystemSurfaceOverlap
+    )
   );
   const metricLayerPresence = Math.max(
     galacticLayer.presence,
@@ -1090,11 +1163,16 @@ function scaleModelForDistance(distance) {
     regionalLayer.pointScale,
     localMapLayer.pointScale
   );
-  const metricLayerHaloScale = Math.max(
+  const rawMetricLayerHaloScale = Math.max(
     galacticLayer.haloScale,
     regionalLayer.haloScale,
     localMapLayer.haloScale
   );
+  const metricPsfContinuity =
+    metricCatalogPresence *
+    smoothstep(1600, 3200, value) *
+    0.56;
+  const metricLayerHaloScale = Math.max(rawMetricLayerHaloScale, metricPsfContinuity);
   const metricLayerLabelWeight = Math.max(
     galacticLayer.labelWeight,
     regionalLayer.labelWeight,
@@ -1109,10 +1187,12 @@ function scaleModelForDistance(distance) {
     regionalLayer.opacity,
     localMapLayer.opacity
   );
-  const localApproach = clamp((1 - metricLayerOpacity) * 0.58 + localSystemLayer.presence * 0.24 + surfacePresence * 0.18, 0, 1);
+  const metricCoreVisibility = metricCatalogPresence;
+  const metricCoreRadiusScale = mix(0.16, 1, smoothstep(0.08, 0.88, metricCoreVisibility));
+  const localApproach = clamp((1 - metricLayerOpacity) * 0.54 + localSystemLayer.presence * 0.24 + surfaceReadiness * 0.22, 0, 1);
   return {
     distance: value,
-    scaleStage: scaleStageForDistance(value),
+    scaleStage: scaleStageForDistance(value, surfaceReadiness),
     scaleDepth,
     scaleAxisProgress,
     mapDepth,
@@ -1121,6 +1201,8 @@ function scaleModelForDistance(distance) {
     celestialBackdropPresence,
     localSystemPresence,
     surfacePresence,
+    surfaceReadiness,
+    surfaceDepth,
     surfaceViewRadiusStarR,
     localApproach,
     galacticLayer,
@@ -1128,12 +1210,16 @@ function scaleModelForDistance(distance) {
     localMapLayer,
     localSystemLayer,
     surfaceLayer,
+    haloOverlapStrength,
     metricLayerPresence,
     metricLayerPointScale,
     metricLayerHaloScale,
+    metricPsfContinuity,
     metricLayerLabelWeight,
     metricLayerPickWeight,
-    metricLayerOpacity
+    metricLayerOpacity,
+    metricCoreVisibility,
+    metricCoreRadiusScale
   };
 }
 
@@ -1161,28 +1247,122 @@ function lodForScaleModel(model) {
 
 function scaleResponse(model) {
   const t = model.mapDepth;
-  const regionalBridge = model.regionalLayer.presence * (1 - model.surfacePresence);
+  const regionalBridgePresence = model.regionalLayer.presence * (1 - model.surfacePresence);
+  const localMapBridgeExit =
+    model.localMapLayer.presence *
+    smoothstep(620, 2600, model.distance) *
+    (1 - smoothstep(0.18, 0.62, model.localSystemPresence));
+  const preSystemAnchorPresence =
+    (1 - smoothstep(1800, 3000, model.distance)) *
+    smoothstep(420, 760, model.distance) *
+    (1 - smoothstep(0.42, 0.88, model.localSystemPresence)) *
+    0.68;
+  const localMapBridgePresence =
+    Math.max(localMapBridgeExit, preSystemAnchorPresence) *
+    (1 - model.surfacePresence);
+  const regionalBridge = regionalBridgePresence * 0.68;
+  const localMapBridge = localMapBridgePresence * 0.46;
+  const activeBridgePresence = clamp(regionalBridge + localMapBridge, 0, 0.82);
+  const galacticRetreat = 1 - model.galacticLayer.presence;
+  const regionalTakeover = model.regionalLayer.presence;
+  const preRegionalContinuity =
+    model.galacticLayer.presence *
+    (1 - smoothstep(0.03, 0.28, regionalTakeover)) *
+    mix(0.32, 0.96, smoothstep(0.70, 0.80, model.galacticLayer.haloScale));
+  const mapContinuityCompensation =
+    clamp(
+      preRegionalContinuity +
+        smoothstep(0.08, 0.54, galacticRetreat) *
+          (1 - smoothstep(0.76, 1.0, regionalTakeover)) *
+          0.92,
+      0,
+      1
+    ) * model.metricCatalogPresence;
+  const regionalGlobalBridgeWindow = smoothstep(0.28, 0.88, galacticRetreat);
+  const mapBridgeOpticalBudget = clamp(
+    regionalBridge * mix(0.08, 0.18, regionalGlobalBridgeWindow) +
+      localMapBridge * 0.56,
+    0,
+    0.34
+  );
+  const localSystemBridge = model.localSystemPresence * (1 - model.surfaceReadiness * 0.58);
   const localSurface = model.surfacePresence;
   const galacticBase = model.galacticLayer.opacity;
   const galacticResidual = clamp(galacticBase + regionalBridge * 0.28, 0, 1);
+  const globalVeilPresence =
+    model.distance >= REGIONAL_DISTANCE
+      ? clamp(galacticResidual * 0.14 + regionalBridge * 0.060, 0, 1)
+      : 0;
+  const overlayHazeBudget = clamp(
+    globalVeilPresence * 0.34 +
+      galacticResidual * model.metricLayerOpacity * 0.035 +
+      regionalBridge * 0.035 +
+      localMapBridge * 0.018 +
+      localSystemBridge * 0.055 * (1 - model.surfaceReadiness) +
+      model.surfaceReadiness * 0.10,
+    0,
+    1
+  );
+  const starCoreExposure = clamp(
+    0.945 - model.surfaceDepth * 0.018,
+    0.91,
+    0.955
+  );
+  const metricOverlayEnergy = clamp(
+    0.86 +
+      model.metricLayerOpacity * 0.08 -
+      model.haloOverlapStrength * 0.045 -
+      model.localApproach * 0.035,
+    0.74,
+    0.96
+  );
+  const backdropEnergy = clamp(
+    0.84 +
+      model.celestialBackdropPresence * 0.08 -
+      model.surfaceDepth * 0.035,
+    0.78,
+    0.93
+  );
+  const localStructureEnergy = clamp(
+    0.82 +
+      model.localSystemLayer.presence * 0.10 +
+      model.surfaceReadiness * 0.035 -
+      model.surfaceDepth * 0.045,
+    0.76,
+    0.94
+  );
+  const surfaceOpticalEnergy = clamp(
+    0.76 +
+      model.surfaceReadiness * 0.09 +
+      model.surfaceDepth * 0.035 -
+      model.haloOverlapStrength * 0.035,
+    0.72,
+    0.88
+  );
   const referenceStrength =
     smoothstep(0.22, 0.48, t) *
     (1 - smoothstep(0.78, 0.94, t)) *
     model.metricLayerOpacity *
     (0.34 + regionalBridge * 0.62);
-  const exposure = clamp(
-    0.86 +
-      galacticResidual * 0.10 +
-      regionalBridge * 0.16 +
-      model.celestialBackdropPresence * 0.05 -
-      localSurface * 0.08,
-    0.76,
-    1.12
-  );
+  const exposure = starCoreExposure;
   return {
     ...model,
     galacticResidual,
     regionalBridge,
+    regionalBridgePresence,
+    localMapBridge,
+    localMapBridgePresence,
+    activeBridgePresence,
+    mapContinuityCompensation,
+    mapBridgeOpticalBudget,
+    localSystemBridge,
+    globalVeilPresence,
+    overlayHazeBudget,
+    starCoreExposure,
+    metricOverlayEnergy,
+    backdropEnergy,
+    localStructureEnergy,
+    surfaceOpticalEnergy,
     referenceStrength,
     localSurface,
     exposure
@@ -1215,10 +1395,13 @@ function nearScaleMagnification(scale, t = zoomT()) {
 }
 
 function localApproachForScaleModel(model) {
+  const metricExit = 1 - (model.metricLayerOpacity ?? model.metricCatalogPresence ?? 1);
+  const systemPresence = model.localSystemLayer?.presence ?? model.localSystemPresence ?? 0;
+  const surfaceReadiness = model.surfaceReadiness ?? model.surfacePresence ?? 0;
   return clamp(
-    (1 - model.metricCatalogPresence) * 0.58 +
-      model.localSystemPresence * 0.24 +
-      model.surfacePresence * 0.18,
+    metricExit * 0.54 +
+      systemPresence * 0.24 +
+      surfaceReadiness * 0.22,
     0,
     1
   );
@@ -1228,8 +1411,73 @@ function backgroundContextScale(model) {
   return clamp(model.metricLayerOpacity, 0.04, 1);
 }
 
+function layerTransitionSpeedScale(model) {
+  const strongestOverlap = Math.max(
+    Math.min(model.galacticLayer.presence, model.regionalLayer.presence),
+    Math.min(model.regionalLayer.presence, model.localMapLayer.presence),
+    Math.min(model.localMapLayer.presence, model.localSystemLayer.presence),
+    Math.min(model.localSystemLayer.presence, model.surfaceLayer.presence)
+  );
+  return mix(1, 0.85, smoothstep(0.05, 0.28, strongestOverlap));
+}
+
+function smoothTemporalValue(key, target, dt, halfLife) {
+  const value = Number.isFinite(target) ? target : 0;
+  if (!opticalSmoothing.initialized || !Number.isFinite(opticalSmoothing.values[key])) {
+    opticalSmoothing.values[key] = value;
+    return value;
+  }
+  const alpha = 1 - Math.pow(0.5, dt / Math.max(0.001, halfLife));
+  const smoothed = opticalSmoothing.values[key] + (value - opticalSmoothing.values[key]) * alpha;
+  opticalSmoothing.values[key] = smoothed;
+  return smoothed;
+}
+
+function smoothOpticalResponse(response, dt, now) {
+  const wheelActivity = clamp((wheelInput.activeUntil - now) / WHEEL_ACTIVE_DECAY_MS, 0, 1);
+  const halfLife = mix(0.040, 0.105, wheelActivity);
+  const dampOverlay = 1 - wheelActivity * 0.08;
+  const dampBridge = 1 - wheelActivity * 0.10;
+  const dampEnergy = 1 - wheelActivity * 0.025;
+
+  for (const key of [
+    "galacticResidual",
+    "globalVeilPresence",
+    "overlayHazeBudget",
+    "metricOverlayEnergy",
+    "backdropEnergy",
+    "localStructureEnergy",
+    "surfaceOpticalEnergy",
+    "referenceStrength",
+    "mapContinuityCompensation",
+    "mapBridgeOpticalBudget",
+    "regionalBridge",
+    "localMapBridge",
+    "activeBridgePresence",
+    "metricLayerHaloScale"
+  ]) {
+    response[key] = smoothTemporalValue(key, response[key] ?? 0, dt, halfLife);
+  }
+
+  for (const [name, layer] of [
+    ["galactic", response.galacticLayer],
+    ["regional", response.regionalLayer],
+    ["localMap", response.localMapLayer],
+    ["localSystem", response.localSystemLayer],
+    ["surface", response.surfaceLayer]
+  ]) {
+    layer.haloScale = smoothTemporalValue(`${name}LayerHaloScale`, layer.haloScale, dt, halfLife);
+  }
+
+  response.overlayHazeBudget *= dampOverlay;
+  response.metricOverlayEnergy *= dampEnergy;
+  response.mapBridgeOpticalBudget *= dampBridge;
+  opticalSmoothing.initialized = true;
+  return response;
+}
+
 function activeImpostorScale(surfacePresence) {
-  return clamp(1 - smoothstep(0.18, 0.90, surfacePresence) * 0.88, 0.12, 1);
+  return clamp(1 - smoothstep(ACTIVE_HANDOFF_START, ACTIVE_HANDOFF_PRIMARY, surfacePresence) * 0.88, 0.12, 1);
 }
 
 function starModelWorldRadius(index) {
@@ -1240,7 +1488,7 @@ function starModelWorldRadius(index) {
 }
 
 function surfaceScreenRadiusForScaleModel(model) {
-  const maxRadius = Math.hypot(view.width, view.height) * 1.18;
+  const maxRadius = Math.min(Math.hypot(view.width, view.height) * 1.18, Math.min(view.width, view.height) * 0.51);
   const radius = (Math.min(view.width, view.height) * 0.5) / model.surfaceViewRadiusStarR;
   return clamp(radius, 0, maxRadius);
 }
@@ -1337,7 +1585,10 @@ function activeStarVisualMetrics(t, response) {
       surfaceAlpha: 0,
       centerVisibility: 0,
       sphereVisibility: 0,
+      surfaceReadiness: 0,
+      surfaceDepth: 0,
       localMapContext: 1,
+      activeHaloRatio: 0,
       surfaceViewRadiusStarR: 7.5
     };
   }
@@ -1345,7 +1596,9 @@ function activeStarVisualMetrics(t, response) {
   const index = pointer.active;
   const p = project(catalog.x[index], catalog.y[index], catalog.z[index]);
   const physicalSphereRadius = starModelWorldRadius(index);
-  const bridgePresence = response.regionalBridge * smoothstep(0.16, 0.86, catalog.importance[index]);
+  const bridgePresence =
+    (response.activeBridgePresence ?? response.regionalBridge) *
+    smoothstep(0.16, 0.86, catalog.importance[index]);
   const baseImpostorRadiusPx =
     catalog.size[index] *
     (1.05 + response.mapDepth * 2.2) *
@@ -1372,6 +1625,11 @@ function activeStarVisualMetrics(t, response) {
     smoothstep(54, 95, sphereScreenRadius) *
     centerVisibility;
   const localMapContext = clamp(response.metricLayerOpacity ?? response.metricCatalogPresence, 0, 1);
+  const primaryRadius = Math.max(sphereScreenRadius, impostorRadiusPx, 1);
+  const activeHaloRatio =
+    response.surfaceReadiness > 0.05
+      ? Math.min(2.05, Math.max(1.15, (sphereScreenRadius * 2.05) / primaryRadius))
+      : Math.min(2.2, Math.max(1.1, (impostorRadiusPx * 1.65) / primaryRadius));
   return {
     index,
     p,
@@ -1386,7 +1644,10 @@ function activeStarVisualMetrics(t, response) {
     surfaceAlpha,
     centerVisibility,
     sphereVisibility,
+    surfaceReadiness: response.surfaceReadiness || 0,
+    surfaceDepth: response.surfaceDepth || 0,
     localMapContext,
+    activeHaloRatio,
     surfaceViewRadiusStarR: response.surfaceViewRadiusStarR
   };
 }
@@ -1639,13 +1900,13 @@ function uniformData(t, now, response) {
     now * 0.001,
     response.surfacePresence || 0,
     response.exposure,
-    response.regionalBridge,
+    response.mapBridgeOpticalBudget ?? response.activeBridgePresence ?? response.regionalBridge,
     response.galacticResidual,
     1 - (response.metricLayerOpacity ?? response.metricCatalogPresence ?? 1),
-    response.metricLayerPointScale ?? 1,
+    response.mapContinuityCompensation ?? 1,
     response.metricLayerHaloScale ?? 1,
     response.metricLayerOpacity ?? 1,
-    response.metricLayerPickWeight ?? 1
+    response.metricCoreVisibility ?? 1
   ]);
 }
 
@@ -1655,7 +1916,7 @@ function sphereUniformData(t, now, visual) {
   const valid = catalog && index >= 0 && index < catalog.count;
   const presence = valid ? visual.surfaceAlpha || 0 : 0;
   const phase = valid ? stellarPhase(index, now) : 0;
-  const activity = valid ? stellarActivity(index) : 0;
+  const activity = valid ? clamp(stellarActivity(index) + (visual?.surfaceDepth || 0) * 0.18, 0, 1) : 0;
   const seed = valid ? seededUnit(index * 19.91 + 0.73) : 0;
   const modelBasis = valid
     ? starModelBasis(index)
@@ -1781,7 +2042,8 @@ function drawDarkLanes(t, response) {
     response.galacticResidual *
     (response.metricLayerOpacity ?? response.metricCatalogPresence ?? 1) *
     (1 - response.localSurface * 0.78) *
-    (1 - (response.surfacePresence || 0) * 0.86);
+    (1 - (response.surfacePresence || 0) * 0.86) *
+    (1 - (response.haloOverlapStrength || 0) * 0.32);
   if (alpha < 0.01) return;
   const basis = cameraBasis();
   labelContext.save();
@@ -1806,8 +2068,8 @@ function drawDarkLanes(t, response) {
         labelContext.lineTo(p.x, p.y);
       }
     }
-    labelContext.strokeStyle = `rgba(0, 2, 9, ${0.052 * alpha * (1 - t * 0.28)})`;
-    labelContext.lineWidth = mix(5, 11, arm / 4);
+    labelContext.strokeStyle = `rgba(0, 2, 9, ${0.028 * alpha * (1 - t * 0.28)})`;
+    labelContext.lineWidth = mix(3, 7, arm / 4);
     labelContext.stroke();
   }
   labelContext.restore();
@@ -1815,11 +2077,17 @@ function drawDarkLanes(t, response) {
 
 function drawCatalogDensity(t, response) {
   const contextScale = response.contextScale || 1;
+  const mapOpticalApproach =
+    smoothstep(0.06, 0.30, t) *
+    (1 - smoothstep(0.58, 0.78, t)) *
+    (response.metricCoreVisibility ?? response.metricCatalogPresence ?? 1) *
+    (1 - smoothstep(0.08, 0.92, 1 - (response.metricLayerOpacity ?? response.metricCatalogPresence ?? 1))) *
+    (response.mapContinuityCompensation ?? 1);
   const alpha =
-    (response.galacticResidual * 0.46 + response.regionalBridge * 0.22) *
+    (response.galacticResidual * 0.28 + response.regionalBridge * 0.12) *
     (response.metricLayerOpacity ?? response.metricCatalogPresence ?? 1) *
     (1 - response.localSurface * 0.38) *
-    (1 - (response.localApproach || response.surfacePresence || 0) * 0.58);
+    (1 - (response.localApproach || response.surfacePresence || 0) * 0.74);
   if (alpha < 0.01) return;
 
   const basis = cameraBasis();
@@ -1835,15 +2103,16 @@ function drawCatalogDensity(t, response) {
     const importance = catalog.importance[index];
     const core = Math.exp(-(catalog.radius[index] * catalog.radius[index]) / 20);
     const radius =
-      mix(1.1, 4.8, clamp(core * 0.6 + importance * 0.55, 0, 1)) *
-      (1 - t * 0.24 + response.regionalBridge * 0.14) *
+      mix(0.72, 2.65, clamp(core * 0.72 + importance * 0.48, 0, 1)) *
+      (1 - t * 0.10 + response.regionalBridge * 0.08 + mapOpticalApproach * 0.24) *
       contextScale;
     const glow =
-      clamp(0.02 + core * 0.074 + importance * 0.044, 0.014, 0.13) *
+      clamp(0.018 + core * 0.058 + importance * 0.032, 0.012, 0.086) *
       alpha *
       mix(0.56, 1, contextScale) *
-      response.exposure;
-    const gradient = labelContext.createRadialGradient(p.x, p.y, 0, p.x, p.y, radius * 3.2);
+      (response.metricOverlayEnergy || 0.86) *
+      (1 + mapOpticalApproach * 2.25);
+    const gradient = labelContext.createRadialGradient(p.x, p.y, 0, p.x, p.y, radius * 1.85);
     gradient.addColorStop(
       0,
       cssRgba(
@@ -1853,21 +2122,18 @@ function drawCatalogDensity(t, response) {
         glow
       )
     );
+    gradient.addColorStop(0.28, cssRgba(catalog.r[index], catalog.g[index], catalog.b[index], glow * 0.18));
     gradient.addColorStop(1, cssRgba(catalog.r[index], catalog.g[index], catalog.b[index], 0));
     labelContext.fillStyle = gradient;
     labelContext.beginPath();
-    labelContext.arc(p.x, p.y, radius * 3.2, 0, TWO_PI);
+    labelContext.arc(p.x, p.y, radius * 1.85, 0, TWO_PI);
     labelContext.fill();
   }
   labelContext.restore();
 }
 
 function drawGalacticVeil(t, response) {
-  const alpha =
-    (response.galacticResidual * 0.70 + response.regionalBridge * 0.20) *
-    (response.metricLayerOpacity ?? response.metricCatalogPresence ?? 1) *
-    (1 - response.localSurface * 0.44) *
-    (1 - (response.surfacePresence || 0) * 0.62);
+  const alpha = response.globalVeilPresence ?? 0;
   if (alpha < 0.01) return;
 
   const basis = cameraBasis();
@@ -1875,7 +2141,6 @@ function drawGalacticVeil(t, response) {
   labelContext.globalCompositeOperation = "lighter";
   labelContext.lineCap = "round";
   labelContext.lineJoin = "round";
-  labelContext.filter = "blur(8px)";
   for (let arm = 0; arm < 5; arm += 1) {
     labelContext.beginPath();
     let started = false;
@@ -1906,15 +2171,15 @@ function drawGalacticVeil(t, response) {
     }
     const warm = arm % 2 === 0;
     labelContext.strokeStyle = warm
-      ? `rgba(255, 214, 168, ${0.033 * alpha})`
-      : `rgba(178, 209, 255, ${0.026 * alpha})`;
-    labelContext.lineWidth = mix(24, 42, arm / 4) * (1 - t * 0.24 + response.regionalBridge * 0.12);
+      ? `rgba(255, 214, 168, ${0.012 * alpha})`
+      : `rgba(178, 209, 255, ${0.009 * alpha})`;
+    labelContext.lineWidth = mix(6, 16, arm / 4) * (1 - t * 0.18 + response.regionalBridge * 0.08);
     labelContext.stroke();
   }
 
   const core = project(0, 0, 0, basis);
   if (Math.abs(core.ndcX) < 1.2 && Math.abs(core.ndcY) < 1.2) {
-    const coreRadius = Math.min(view.width, view.height) * 0.18 * (1 - t * 0.18);
+    const coreRadius = Math.min(view.width, view.height) * 0.10 * (1 - t * 0.18);
     const glow = labelContext.createRadialGradient(
       core.x,
       core.y,
@@ -1923,8 +2188,8 @@ function drawGalacticVeil(t, response) {
       core.y,
       coreRadius
     );
-    glow.addColorStop(0, `rgba(255, 236, 205, ${0.055 * alpha})`);
-    glow.addColorStop(0.48, `rgba(196, 218, 255, ${0.024 * alpha})`);
+    glow.addColorStop(0, `rgba(255, 236, 205, ${0.020 * alpha})`);
+    glow.addColorStop(0.48, `rgba(196, 218, 255, ${0.009 * alpha})`);
     glow.addColorStop(1, "rgba(196, 218, 255, 0)");
     labelContext.fillStyle = glow;
     labelContext.beginPath();
@@ -2042,12 +2307,16 @@ function stellarPhase(index, now) {
 function localReferenceStrength(response, visual) {
   const surface = visual?.surfaceAlpha || 0;
   const radius = visual?.sphereScreenRadius || 0;
+  const surfaceDepth = response?.surfaceDepth || visual?.surfaceDepth || 0;
   const surfaceReference =
-    surface * smoothstep(0.18, 0.42, surface) * smoothstep(90, 260, radius);
+    surface *
+    smoothstep(0.16, 0.38, surface) *
+    smoothstep(82, 230, radius) *
+    (0.88 + surfaceDepth * 0.34);
   const systemReference =
     (response?.localSystemPresence || 0) *
-    (1 - smoothstep(0.36, 0.86, response?.surfacePresence || 0));
-  return clamp(Math.max(surfaceReference, systemReference * 0.72), 0, 1);
+    (1 - smoothstep(0.30, 0.88, response?.surfaceReadiness || response?.surfacePresence || 0));
+  return clamp(Math.max(surfaceReference, systemReference * 0.88), 0, 1);
 }
 
 function isNamedStar(index) {
@@ -2133,10 +2402,10 @@ function drawBridgeRings(index, basis, bridge, t) {
 function drawBridgeHalo(index, p, bridge, active = false, radiusCeiling = Infinity) {
   const importance = catalog.importance[index];
   let radius = active
-    ? mix(46, 106, bridge) * (0.82 + importance * 0.58)
-    : mix(15, 44, clamp(importance * 1.1, 0, 1)) * (0.75 + bridge * 0.52);
+    ? mix(34, 82, bridge) * (0.78 + importance * 0.46)
+    : mix(10, 28, clamp(importance * 1.1, 0, 1)) * (0.72 + bridge * 0.42);
   if (Number.isFinite(radiusCeiling)) radius = Math.min(radius, radiusCeiling);
-  const alpha = bridge * (active ? 0.24 : 0.06 + importance * 0.08);
+  const alpha = bridge * (active ? 0.13 : 0.035 + importance * 0.045);
   if (alpha < 0.006) return;
   const r = catalog.r[index];
   const g = catalog.g[index];
@@ -2156,7 +2425,7 @@ function drawBridgeHalo(index, p, bridge, active = false, radiusCeiling = Infini
 
 function drawRegionalBridge(response, t, now, visual) {
   const bridge =
-    response.regionalBridge *
+    (response.activeBridgePresence ?? response.regionalBridge) *
     (1 - response.localSurface * 0.18) *
     (1 - (visual?.sphereVisibility || visual?.surfaceAlpha || 0) * 0.95);
   if (bridge < 0.01 || pointer.active < 0) return;
@@ -2172,7 +2441,7 @@ function drawRegionalBridge(response, t, now, visual) {
   labelContext.globalCompositeOperation = "lighter";
   if (activeVisible) {
     const radiusCeiling =
-      visual && visual.index === active ? Math.max(42, visual.apparentRadiusPx * 2.6) : Infinity;
+      visual && visual.index === active ? Math.max(34, visual.apparentRadiusPx * 2.2) : Infinity;
     drawBridgeHalo(active, activeP, bridge * pulse, true, radiusCeiling);
   }
 
@@ -2206,7 +2475,9 @@ function drawCelestialBackdrop(response, now) {
   const origin = [catalog.x[active], catalog.y[active], catalog.z[active]];
   const limit = Math.min(catalog.indexAtDraw.length, catalog.budget.key === "safe" ? 520 : 920);
   const stride = Math.max(1, Math.floor(catalog.indexAtDraw.length / limit));
-  const twinkle = 0.88 + Math.sin(now * 0.0014 + active * 0.11) * 0.05;
+  const twinkle = 0.96 + Math.sin(now * 0.0014 + active * 0.11) * 0.014;
+  const localBridge = response.localSystemBridge || 0;
+  const backdropEnergy = response.backdropEnergy || 0.84;
 
   labelContext.save();
   labelContext.globalCompositeOperation = "lighter";
@@ -2228,15 +2499,16 @@ function drawCelestialBackdrop(response, now) {
     const y = (0.5 - viewY * 0.47) * view.height;
     if (x < -8 || x > view.width + 8 || y < -8 || y > view.height + 8) continue;
     const importance = catalog.importance[index];
-    const radius = mix(0.45, 1.55, clamp(importance * 1.18, 0, 1));
+    const radius = mix(0.42, 1.35, clamp(importance * 1.18, 0, 1)) * (1 + localBridge * 0.10);
     const alpha =
       presence *
       edge *
       twinkle *
-      mix(0.010, 0.046, clamp(catalog.lum[index] / 2.15, 0, 1)) *
-      (0.72 + response.surfacePresence * 0.18);
+      mix(0.012, 0.045, clamp(catalog.lum[index] / 2.15, 0, 1)) *
+      backdropEnergy *
+      (0.90 + localBridge * 0.03);
     if (alpha < 0.003) continue;
-    const gradient = labelContext.createRadialGradient(x, y, 0, x, y, radius * 4.6);
+    const gradient = labelContext.createRadialGradient(x, y, 0, x, y, radius * 2.35);
     gradient.addColorStop(
       0,
       cssRgba(
@@ -2246,10 +2518,11 @@ function drawCelestialBackdrop(response, now) {
         alpha
       )
     );
+    gradient.addColorStop(0.24, cssRgba(catalog.r[index], catalog.g[index], catalog.b[index], alpha * 0.22));
     gradient.addColorStop(1, cssRgba(catalog.r[index], catalog.g[index], catalog.b[index], 0));
     labelContext.fillStyle = gradient;
     labelContext.beginPath();
-    labelContext.arc(x, y, radius * 4.6, 0, TWO_PI);
+    labelContext.arc(x, y, radius * 2.35, 0, TWO_PI);
     labelContext.fill();
   }
   labelContext.restore();
@@ -2263,11 +2536,11 @@ function drawLocalSystemShell(response, visual, now) {
 
   const index = pointer.active;
   const phase = stellarPhase(index, now) * TWO_PI;
-  const surfaceFade = 1 - smoothstep(0.28, 0.86, response.surfacePresence || 0);
-  const visible = presence * surfaceFade;
+  const surfaceFade = 1 - smoothstep(0.24, 0.86, response.surfaceReadiness || response.surfacePresence || 0);
+  const visible = presence * surfaceFade * (response.localStructureEnergy || 0.82);
   if (visible < 0.01) return;
 
-  const baseRadius = Math.min(view.width, view.height) * mix(0.18, 0.38, presence);
+  const baseRadius = Math.min(view.width, view.height) * mix(0.20, 0.42, presence);
   const tilt = mix(-0.48, 0.48, seededUnit(index * 8.77 + 0.39));
   const r = catalog.r[index];
   const g = catalog.g[index];
@@ -2275,30 +2548,30 @@ function drawLocalSystemShell(response, visual, now) {
 
   labelContext.save();
   labelContext.globalCompositeOperation = "lighter";
-  const shellRadius = baseRadius * 1.45;
+  const shellRadius = baseRadius * 1.26;
   const glow = labelContext.createRadialGradient(p.x, p.y, baseRadius * 0.12, p.x, p.y, shellRadius);
-  glow.addColorStop(0, cssRgba(mix(r, 1, 0.36), mix(g, 0.94, 0.25), mix(b, 0.86, 0.20), 0.030 * visible));
-  glow.addColorStop(0.52, cssRgba(r, g, b, 0.018 * visible));
+  glow.addColorStop(0, cssRgba(mix(r, 1, 0.36), mix(g, 0.94, 0.25), mix(b, 0.86, 0.20), 0.020 * visible));
+  glow.addColorStop(0.52, cssRgba(r, g, b, 0.008 * visible));
   glow.addColorStop(1, cssRgba(r, g, b, 0));
   labelContext.fillStyle = glow;
   labelContext.beginPath();
   labelContext.arc(p.x, p.y, shellRadius, 0, TWO_PI);
   labelContext.fill();
 
-  labelContext.setLineDash([2, 15]);
+  labelContext.setLineDash([2, 12]);
   labelContext.lineCap = "round";
   for (const scale of [0.78, 1.18, 1.72]) {
     const ring = baseRadius * scale;
-    labelContext.strokeStyle = `rgba(142, 183, 236, ${visible * mix(0.085, 0.030, (scale - 0.78) / 0.94)})`;
-    labelContext.lineWidth = 0.9;
+    labelContext.strokeStyle = `rgba(142, 183, 236, ${visible * mix(0.150, 0.052, (scale - 0.78) / 0.94)})`;
+    labelContext.lineWidth = 0.88;
     labelContext.beginPath();
     labelContext.ellipse(p.x, p.y, ring, ring * 0.58, tilt, phase * 0.04, phase * 0.04 + TWO_PI);
     labelContext.stroke();
   }
 
   labelContext.setLineDash([]);
-  labelContext.strokeStyle = `rgba(200, 225, 255, ${0.075 * visible})`;
-  labelContext.lineWidth = 1;
+  labelContext.strokeStyle = `rgba(200, 225, 255, ${0.125 * visible})`;
+  labelContext.lineWidth = 0.88;
   for (let i = 0; i < 8; i += 1) {
     const angle = phase * 0.18 + (i / 8) * TWO_PI;
     const inner = baseRadius * 1.02;
@@ -2340,18 +2613,31 @@ function drawLocalAtmosphere(t, now, response, visual) {
   const pulse = 0.96 + Math.sin(phase * 1.7 + index * 0.37) * 0.04;
   const viewportRadius = Math.hypot(view.width, view.height);
   const minDimension = Math.min(view.width, view.height);
+  const surfaceDepth = response?.surfaceDepth || visual?.surfaceDepth || 0;
   const detailFade =
     smoothstep(28, 180, radius) *
-    (1 - smoothstep(minDimension * 0.68, minDimension * 1.05, radius));
-  const environmentDim = smoothstep(minDimension * 0.22, minDimension * 0.72, radius) * visible;
+    (1 - smoothstep(minDimension * 0.82, minDimension * 1.08, radius));
+  const detailEnergy = clamp(detailFade * (1 + surfaceDepth * 0.26), 0, 1.12);
+  const surfaceOpticalEnergy = response?.surfaceOpticalEnergy || 0.76;
+  const radiusEnergy = mix(1.08, 0.50, smoothstep(170, 330, radius));
+  const haloAreaEnergy = mix(1, 0.36, smoothstep(190, 340, radius));
+  const environmentDim =
+    smoothstep(0.72, 0.98, response?.surfaceReadiness || 0) *
+    smoothstep(minDimension * 0.42, minDimension * 0.82, radius) *
+    visible *
+    (0.82 + surfaceDepth * 0.04);
 
   labelContext.save();
   if (environmentDim > 0.006) {
-    labelContext.fillStyle = `rgba(0, 2, 8, ${0.14 * environmentDim})`;
+    labelContext.fillStyle = `rgba(0, 2, 8, ${0.018 * environmentDim})`;
     labelContext.fillRect(0, 0, view.width, view.height);
   }
 
-  const bodyAlpha = visible * smoothstep(64, 180, radius) * (0.48 + detailFade * 0.22);
+  const bodyAlpha =
+    visible *
+    smoothstep(64, 170, radius) *
+    (0.24 + detailEnergy * 0.055) *
+    radiusEnergy;
   if (bodyAlpha > 0.01) {
     const highlightX = p.x - radius * 0.18;
     const highlightY = p.y - radius * 0.22;
@@ -2365,13 +2651,13 @@ function drawLocalAtmosphere(t, now, response, visual) {
     );
     body.addColorStop(
       0,
-      cssRgba(mix(r, 1, 0.72), mix(g, 0.98, 0.58), mix(b, 0.82, 0.36), 0.74 * bodyAlpha)
+      cssRgba(mix(r, 1, 0.72), mix(g, 0.98, 0.58), mix(b, 0.82, 0.36), 0.42 * bodyAlpha)
     );
     body.addColorStop(
       0.42,
-      cssRgba(mix(r, 1, 0.34), mix(g, 0.94, 0.24), mix(b, 0.78, 0.16), 0.50 * bodyAlpha)
+      cssRgba(mix(r, 1, 0.34), mix(g, 0.94, 0.24), mix(b, 0.78, 0.16), 0.28 * bodyAlpha)
     );
-    body.addColorStop(1, cssRgba(r * 0.54, g * 0.58, b * 0.72, 0.24 * bodyAlpha));
+    body.addColorStop(1, cssRgba(r * 0.54, g * 0.58, b * 0.72, 0.12 * bodyAlpha));
 
     labelContext.save();
     labelContext.beginPath();
@@ -2381,7 +2667,7 @@ function drawLocalAtmosphere(t, now, response, visual) {
     labelContext.fillStyle = body;
     labelContext.fillRect(p.x - radius, p.y - radius, radius * 2, radius * 2);
 
-    for (let i = 0; i < 24; i += 1) {
+    for (let i = 0; i < 16; i += 1) {
       const angle = seededUnit(index * 21.7 + i * 5.3) * TWO_PI + phase * mix(0.04, 0.18, seededUnit(index + i));
       const band = mix(0.08, 0.86, seededUnit(index * 22.7 + i * 7.3));
       const x = p.x + Math.cos(angle) * radius * band;
@@ -2394,7 +2680,7 @@ function drawLocalAtmosphere(t, now, response, visual) {
               mix(r, 1, 0.48),
               mix(g, 0.94, 0.32),
               mix(b, 0.78, 0.22),
-              bodyAlpha * mix(0.028, 0.082, seededUnit(index * 25.7 + i))
+              bodyAlpha * mix(0.018, 0.052, seededUnit(index * 25.7 + i))
             );
       labelContext.beginPath();
       labelContext.ellipse(x, y, spot * mix(1.4, 3.6, seededUnit(index * 26.7 + i)), spot, angle, 0, TWO_PI);
@@ -2402,8 +2688,8 @@ function drawLocalAtmosphere(t, now, response, visual) {
     }
 
     labelContext.globalCompositeOperation = "lighter";
-    labelContext.strokeStyle = cssRgba(mix(r, 1, 0.54), mix(g, 0.94, 0.36), mix(b, 0.82, 0.24), 0.16 * bodyAlpha);
-    labelContext.lineWidth = Math.max(1, radius * 0.008);
+    labelContext.strokeStyle = cssRgba(mix(r, 1, 0.54), mix(g, 0.94, 0.36), mix(b, 0.82, 0.24), 0.19 * bodyAlpha);
+    labelContext.lineWidth = Math.max(0.9, radius * 0.006);
     labelContext.beginPath();
     labelContext.arc(p.x, p.y, radius * 0.985, 0, TWO_PI);
     labelContext.stroke();
@@ -2411,21 +2697,19 @@ function drawLocalAtmosphere(t, now, response, visual) {
   }
 
   labelContext.globalCompositeOperation = "lighter";
-  const haloRadius = Math.min(radius * mix(2.1, 3.3, detailFade), viewportRadius * 1.18);
+  const haloRadius = Math.min(radius * mix(1.30, 1.70, detailEnergy), viewportRadius * 0.64);
+  const haloAlpha = visible * surfaceOpticalEnergy * haloAreaEnergy;
   const outer = labelContext.createRadialGradient(p.x, p.y, radius * 0.2, p.x, p.y, haloRadius);
-  outer.addColorStop(0, cssRgba(mix(r, 1, 0.48), mix(g, 0.96, 0.42), mix(b, 0.86, 0.38), 0.12 * visible));
-  outer.addColorStop(0.28, cssRgba(r, g, b, 0.055 * visible));
+  outer.addColorStop(0, cssRgba(mix(r, 1, 0.48), mix(g, 0.96, 0.42), mix(b, 0.86, 0.38), 0.022 * haloAlpha));
+  outer.addColorStop(0.28, cssRgba(r, g, b, 0.008 * haloAlpha));
   outer.addColorStop(1, cssRgba(r, g, b, 0));
   labelContext.fillStyle = outer;
-  if (haloRadius > viewportRadius * 1.08) {
-    labelContext.fillRect(0, 0, view.width, view.height);
-  } else {
-    labelContext.beginPath();
-    labelContext.arc(p.x, p.y, haloRadius, 0, TWO_PI);
-    labelContext.fill();
-  }
+  labelContext.beginPath();
+  labelContext.arc(p.x, p.y, haloRadius, 0, TWO_PI);
+  labelContext.fill();
 
-  const coronaCount = Math.round(mix(0, 18, detailFade));
+  const readableDetail = detailEnergy * smoothstep(96, 180, radius) * smoothstep(0.12, 0.40, response.surfaceReadiness || 0);
+  const coronaCount = Math.round(mix(0, 12 + surfaceDepth * 4, readableDetail));
   for (let i = 0; i < coronaCount; i += 1) {
     const start =
       seededUnit(index * 1.7 + i * 9.1) * TWO_PI +
@@ -2437,16 +2721,17 @@ function drawLocalAtmosphere(t, now, response, visual) {
       mix(g, 0.92, 0.36),
       mix(b, 0.72, 0.18),
       visible *
-        detailFade *
-        mix(0.035, 0.12 + activity * 0.035, seededUnit(index * 4.1 + i * 6.3))
+        readableDetail *
+        radiusEnergy *
+        mix(0.025, 0.082 + activity * 0.028, seededUnit(index * 4.1 + i * 6.3))
     );
-    labelContext.lineWidth = mix(0.8, 2.4, seededUnit(index * 5.1 + i * 7.1)) * pulse;
+    labelContext.lineWidth = mix(0.7, 1.75, seededUnit(index * 5.1 + i * 7.1)) * pulse;
     labelContext.beginPath();
     labelContext.arc(p.x, p.y, orbit, start, start + span);
     labelContext.stroke();
   }
 
-  const fieldArcCount = Math.round(mix(0, 7, detailFade) * (0.7 + activity * 0.5));
+  const fieldArcCount = Math.round(mix(0, 5 + surfaceDepth * 2, readableDetail) * (0.7 + activity * 0.5));
   labelContext.lineCap = "round";
   for (let i = 0; i < fieldArcCount; i += 1) {
     const base = seededUnit(index * 12.1 + i * 3.7) * TWO_PI + phase * 0.42;
@@ -2467,9 +2752,9 @@ function drawLocalAtmosphere(t, now, response, visual) {
       mix(r, 1, 0.45),
       mix(g, 0.96, 0.32),
       mix(b, 0.84, 0.24),
-      visible * detailFade * mix(0.025, 0.070, seededUnit(index * 17.1 + i)) * (0.65 + activity)
+      visible * readableDetail * radiusEnergy * mix(0.018, 0.052, seededUnit(index * 17.1 + i)) * (0.65 + activity)
     );
-    labelContext.lineWidth = mix(0.7, 1.6, seededUnit(index * 18.1 + i));
+    labelContext.lineWidth = mix(0.6, 1.25, seededUnit(index * 18.1 + i));
     labelContext.beginPath();
     labelContext.moveTo(x1, y1);
     labelContext.quadraticCurveTo(cx, cy, x2, y2);
@@ -2505,7 +2790,7 @@ function drawLocalReferenceFrame(response, visual, now) {
   const shellRadius = radius * 1.12;
   const shell = labelContext.createRadialGradient(p.x, p.y, radius * 0.72, p.x, p.y, shellRadius * 1.34);
   shell.addColorStop(0, "rgba(120, 170, 255, 0)");
-  shell.addColorStop(0.52, `rgba(126, 174, 255, ${0.030 * visible})`);
+  shell.addColorStop(0.52, `rgba(126, 174, 255, ${0.014 * visible})`);
   shell.addColorStop(1, "rgba(126, 174, 255, 0)");
   labelContext.fillStyle = shell;
   labelContext.beginPath();
@@ -2515,8 +2800,8 @@ function drawLocalReferenceFrame(response, visual, now) {
   labelContext.setLineDash([2, 16]);
   for (const scale of [1.18, 1.72, 2.45]) {
     const ring = radius * scale;
-    labelContext.strokeStyle = `rgba(142, 178, 225, ${visible * mix(0.060, 0.022, (scale - 1.18) / 1.27)})`;
-    labelContext.lineWidth = Math.max(0.7, Math.min(1.2, radius / 360));
+    labelContext.strokeStyle = `rgba(142, 178, 225, ${visible * mix(0.072, 0.026, (scale - 1.18) / 1.27)})`;
+    labelContext.lineWidth = Math.max(0.65, Math.min(1.05, radius / 420));
     labelContext.beginPath();
     labelContext.ellipse(p.x, p.y, ring, ring * 0.62, tilt, 0, TWO_PI);
     labelContext.stroke();
@@ -2813,16 +3098,131 @@ function updateCamera(now, dt) {
   updateDerivedScale();
 }
 
+function applyWheelDelta(deltaY, ctrlKey) {
+  const targetModel = scaleModelForDistance(camera.distanceTarget);
+  const transitionSpeedScale = ctrlKey ? 1 : layerTransitionSpeedScale(targetModel);
+  const localSpeedScale = clamp(
+    1 -
+      (1 - targetModel.metricCatalogPresence) * 0.22 -
+      targetModel.surfacePresence * 0.18,
+    0.58,
+    1
+  );
+  const speed = (ctrlKey ? WHEEL_ZOOM_SPEED_PRECISE : WHEEL_ZOOM_SPEED) * localSpeedScale * transitionSpeedScale;
+  const rawFactor = Math.exp(deltaY * speed);
+  const zoomInFloor = ctrlKey ? 0.58 : 1 - (1 - 0.72) * transitionSpeedScale;
+  const zoomOutCeiling = ctrlKey ? 1.72 : 1 + (1.38 - 1) * transitionSpeedScale;
+  const factor = clamp(rawFactor, zoomInFloor, zoomOutCeiling);
+  const nextDistance = clamp(
+    camera.distanceTarget * factor,
+    MIN_CAMERA_DISTANCE,
+    MAX_CAMERA_DISTANCE
+  );
+  camera.distanceTarget = nextDistance;
+  camera.scaleTarget = projectionScaleForDistance(camera.distanceTarget);
+}
+
+function applyPendingWheel(now) {
+  if (Math.abs(wheelInput.deltaY) < 0.01) return;
+  camera.lastInteraction = now;
+  const delta = clamp(wheelInput.deltaY, -WHEEL_FRAME_DELTA_CAP, WHEEL_FRAME_DELTA_CAP);
+  wheelInput.deltaY -= delta;
+  if (Math.abs(wheelInput.deltaY) < 0.01) wheelInput.deltaY = 0;
+  applyWheelDelta(delta, wheelInput.ctrlKey);
+}
+
+function layerDebugState(prefix, layer) {
+  return {
+    [`${prefix}LayerPresence`]: layer.presence,
+    [`${prefix}LayerPointScale`]: layer.pointScale,
+    [`${prefix}LayerHaloScale`]: layer.haloScale,
+    [`${prefix}LayerLabelWeight`]: layer.labelWeight,
+    [`${prefix}LayerPickWeight`]: layer.pickWeight
+  };
+}
+
+function debugStatePayload(lod, model, response, visual, now) {
+  return {
+    lod: lod.name,
+    zoomT: model.scaleDepth,
+    scaleStage: model.scaleStage,
+    scaleDepth: model.scaleDepth,
+    scaleAxisProgress: model.scaleAxisProgress,
+    scale: camera.scale,
+    scaleTarget: camera.scaleTarget,
+    cameraFov: cameraFovForDistance(camera.distance),
+    distance: camera.distance,
+    distanceTarget: camera.distanceTarget,
+    catalog: catalog.count,
+    draw: catalog.indexAtDraw.length,
+    labels: labels.count,
+    gpu: gpu?.status || "none",
+    fps: metrics.fps,
+    active: catalog.name[pointer.active] || "none",
+    starModel: "sphere",
+    stellarMaterial: "emissive",
+    rotationPhase: pointer.active >= 0 ? stellarPhase(pointer.active, now) : 0,
+    activity: pointer.active >= 0 ? stellarActivity(pointer.active) : 0,
+    bridge: response.activeBridgePresence,
+    regionalBridgePresence: response.regionalBridgePresence,
+    localMapBridgePresence: response.localMapBridgePresence,
+    activeBridgePresence: response.activeBridgePresence,
+    exposure: response.exposure,
+    globalVeilPresence: response.globalVeilPresence,
+    overlayHazeBudget: response.overlayHazeBudget,
+    localReference: response.localReference,
+    localApproach: response.localApproach,
+    metricCatalogPresence: response.metricCatalogPresence,
+    metricLayerPresence: response.metricLayerPresence,
+    metricLayerPointScale: response.metricLayerPointScale,
+    metricLayerHaloScale: response.metricLayerHaloScale,
+    metricPsfContinuity: response.metricPsfContinuity,
+    metricLayerLabelWeight: response.metricLayerLabelWeight,
+    metricLayerPickWeight: response.metricLayerPickWeight,
+    metricLayerOpacity: response.metricLayerOpacity,
+    metricCoreVisibility: response.metricCoreVisibility,
+    metricCoreRadiusScale: response.metricCoreRadiusScale,
+    ...layerDebugState("galactic", response.galacticLayer),
+    ...layerDebugState("regional", response.regionalLayer),
+    ...layerDebugState("localMap", response.localMapLayer),
+    ...layerDebugState("localSystem", response.localSystemLayer),
+    ...layerDebugState("surface", response.surfaceLayer),
+    celestialBackdropPresence: response.celestialBackdropPresence,
+    localSystemPresence: response.localSystemPresence,
+    surfaceReadiness: response.surfaceReadiness,
+    surfaceDepth: response.surfaceDepth,
+    surfaceViewRadiusStarR: visual.surfaceViewRadiusStarR,
+    contextScale: response.contextScale,
+    activeImpostorScale: visual.activeImpostorScale,
+    activeHaloRatio: visual.activeHaloRatio,
+    approach: approach.progress,
+    surface: visual.surfaceAlpha,
+    surfacePresence: visual.surfaceAlpha,
+    surfaceRadius: visual.apparentRadiusPx,
+    sphereRadius: visual.physicalSphereRadius,
+    sphereScreenRadius: visual.sphereScreenRadius,
+    sphereTriangles: gpu?.sphereTriangleCount || 0,
+    sphereDraw: gpu?.lastSphereDraw || 0,
+    sphereVisibility: visual.sphereVisibility || 0,
+    localMapContext: visual.localMapContext ?? 1,
+    activeX: visual.p.x,
+    activeY: visual.p.y,
+    activeLabelX: labels.activeX,
+    activeLabelY: labels.activeY
+  };
+}
+
 function frame(now) {
   if (!initialized) return;
   const last = frame.last || now;
   const dt = clamp((now - last) / 1000, 0.001, 0.14);
   frame.last = now;
+  applyPendingWheel(now);
   updateCamera(now, dt);
   const model = scaleModelForDistance(camera.distance);
   const t = model.mapDepth;
   const lod = lodForScaleModel(model);
-  const response = scaleResponse(model);
+  const response = smoothOpticalResponse(scaleResponse(model), dt, now);
   updateScreenCache(t, response);
   const visual = activeStarVisualMetrics(t, response);
   response.surfacePresence = visual.surfaceAlpha;
@@ -2849,85 +3249,7 @@ function frame(now) {
   }
   if (now - metrics.lastStateAt > 240) {
     metrics.lastStateAt = now;
-    post("state", {
-      state: {
-        lod: lod.name,
-        zoomT: model.scaleDepth,
-        scaleStage: model.scaleStage,
-        scaleDepth: model.scaleDepth,
-        scaleAxisProgress: model.scaleAxisProgress,
-        scale: camera.scale,
-        scaleTarget: camera.scaleTarget,
-        cameraFov: cameraFovForDistance(camera.distance),
-        distance: camera.distance,
-        distanceTarget: camera.distanceTarget,
-        catalog: catalog.count,
-        draw: catalog.indexAtDraw.length,
-        labels: labels.count,
-        gpu: gpu?.status || "none",
-        fps: metrics.fps,
-        active: catalog.name[pointer.active] || "none",
-        starModel: "sphere",
-        stellarMaterial: "emissive",
-        rotationPhase: pointer.active >= 0 ? stellarPhase(pointer.active, now) : 0,
-        activity: pointer.active >= 0 ? stellarActivity(pointer.active) : 0,
-        bridge: response.regionalBridge,
-        exposure: response.exposure,
-        localReference: response.localReference,
-        localApproach: response.localApproach,
-        metricCatalogPresence: response.metricCatalogPresence,
-        metricLayerPresence: response.metricLayerPresence,
-        metricLayerPointScale: response.metricLayerPointScale,
-        metricLayerHaloScale: response.metricLayerHaloScale,
-        metricLayerLabelWeight: response.metricLayerLabelWeight,
-        metricLayerPickWeight: response.metricLayerPickWeight,
-        metricLayerOpacity: response.metricLayerOpacity,
-        galacticLayerPresence: response.galacticLayer.presence,
-        galacticLayerPointScale: response.galacticLayer.pointScale,
-        galacticLayerHaloScale: response.galacticLayer.haloScale,
-        galacticLayerLabelWeight: response.galacticLayer.labelWeight,
-        galacticLayerPickWeight: response.galacticLayer.pickWeight,
-        regionalLayerPresence: response.regionalLayer.presence,
-        regionalLayerPointScale: response.regionalLayer.pointScale,
-        regionalLayerHaloScale: response.regionalLayer.haloScale,
-        regionalLayerLabelWeight: response.regionalLayer.labelWeight,
-        regionalLayerPickWeight: response.regionalLayer.pickWeight,
-        localMapLayerPresence: response.localMapLayer.presence,
-        localMapLayerPointScale: response.localMapLayer.pointScale,
-        localMapLayerHaloScale: response.localMapLayer.haloScale,
-        localMapLayerLabelWeight: response.localMapLayer.labelWeight,
-        localMapLayerPickWeight: response.localMapLayer.pickWeight,
-        localSystemLayerPresence: response.localSystemLayer.presence,
-        localSystemLayerPointScale: response.localSystemLayer.pointScale,
-        localSystemLayerHaloScale: response.localSystemLayer.haloScale,
-        localSystemLayerLabelWeight: response.localSystemLayer.labelWeight,
-        localSystemLayerPickWeight: response.localSystemLayer.pickWeight,
-        surfaceLayerPresence: response.surfaceLayer.presence,
-        surfaceLayerPointScale: response.surfaceLayer.pointScale,
-        surfaceLayerHaloScale: response.surfaceLayer.haloScale,
-        surfaceLayerLabelWeight: response.surfaceLayer.labelWeight,
-        surfaceLayerPickWeight: response.surfaceLayer.pickWeight,
-        celestialBackdropPresence: response.celestialBackdropPresence,
-        localSystemPresence: response.localSystemPresence,
-        surfaceViewRadiusStarR: visual.surfaceViewRadiusStarR,
-        contextScale: response.contextScale,
-        activeImpostorScale: visual.activeImpostorScale,
-        approach: approach.progress,
-        surface: visual.surfaceAlpha,
-        surfacePresence: visual.surfaceAlpha,
-        surfaceRadius: visual.apparentRadiusPx,
-        sphereRadius: visual.physicalSphereRadius,
-        sphereScreenRadius: visual.sphereScreenRadius,
-        sphereTriangles: gpu?.sphereTriangleCount || 0,
-        sphereDraw: gpu?.lastSphereDraw || 0,
-        sphereVisibility: visual.sphereVisibility || 0,
-        localMapContext: visual.localMapContext ?? 1,
-        activeX: visual.p.x,
-        activeY: visual.p.y,
-        activeLabelX: labels.activeX,
-        activeLabelY: labels.activeY
-      }
-    });
+    post("state", { state: debugStatePayload(lod, model, response, visual, now) });
   }
   animationHandle = requestFrame(frame);
 }
@@ -2979,27 +3301,12 @@ function handleDrag(message) {
 }
 
 function handleWheel(message) {
-  camera.lastInteraction = performance.now();
+  const now = performance.now();
+  camera.lastInteraction = now;
   cancelFocusFlight();
-  const targetModel = scaleModelForDistance(camera.distanceTarget);
-  const localSpeedScale = clamp(
-    1 -
-      (1 - targetModel.metricCatalogPresence) * 0.22 -
-      targetModel.surfacePresence * 0.18,
-    0.58,
-    1
-  );
-  const speed = (message.ctrlKey ? WHEEL_ZOOM_SPEED_PRECISE : WHEEL_ZOOM_SPEED) * localSpeedScale;
-  const delta = clamp(message.deltaY, -2400, 2400);
-  const rawFactor = Math.exp(delta * speed);
-  const factor = message.ctrlKey ? clamp(rawFactor, 0.58, 1.72) : clamp(rawFactor, 0.72, 1.38);
-  const nextDistance = clamp(
-    camera.distanceTarget * factor,
-    MIN_CAMERA_DISTANCE,
-    MAX_CAMERA_DISTANCE
-  );
-  camera.distanceTarget = nextDistance;
-  camera.scaleTarget = projectionScaleForDistance(camera.distanceTarget);
+  wheelInput.deltaY = clamp(wheelInput.deltaY + clamp(message.deltaY, -2400, 2400), -3600, 3600);
+  wheelInput.ctrlKey = Boolean(message.ctrlKey);
+  wheelInput.activeUntil = now + WHEEL_ACTIVE_DECAY_MS;
   labels.lastSelectAt = 0;
 }
 
@@ -3045,49 +3352,40 @@ async function init(message) {
 
 self.onmessage = (event) => {
   const message = event.data || {};
-  if (message.type === "init") {
-    init(message);
-    return;
-  }
-  if (message.type === "resize") {
-    resize(message.width, message.height, message.dpr);
-    return;
-  }
+  if (message.type === "init") return init(message);
+  if (message.type === "resize") return resize(message.width, message.height, message.dpr);
   if (!initialized) return;
-  if (message.type === "pointerdown") {
-    camera.dragging = true;
-    camera.lastInteraction = performance.now();
-    handlePointerMove(message);
-    return;
-  }
-  if (message.type === "pointerup") {
-    camera.dragging = false;
-    camera.lastInteraction = performance.now();
-    handlePointerMove(message);
-    return;
-  }
-  if (message.type === "pointerleave") {
-    pointer.hover = -1;
-    labels.lastSelectAt = 0;
-    return;
-  }
-  if (message.type === "pointermove") {
-    handlePointerMove(message);
-    return;
-  }
-  if (message.type === "drag") {
-    handleDrag(message);
-    return;
-  }
-  if (message.type === "wheel") {
-    handleWheel(message);
-    return;
-  }
-  if (message.type === "tap") {
-    handlePointerMove(message);
-    const picked = pointer.hover >= 0 ? pointer.hover : pickAt(message.x, message.y);
-    if (picked >= 0) {
-      focusStar(picked, approachDistanceForStar(picked), true);
+  switch (message.type) {
+    case "pointerdown":
+      camera.dragging = true;
+      camera.lastInteraction = performance.now();
+      handlePointerMove(message);
+      break;
+    case "pointerup":
+      camera.dragging = false;
+      camera.lastInteraction = performance.now();
+      handlePointerMove(message);
+      break;
+    case "pointerleave":
+      pointer.hover = -1;
+      labels.lastSelectAt = 0;
+      break;
+    case "pointermove":
+      handlePointerMove(message);
+      break;
+    case "drag":
+      handleDrag(message);
+      break;
+    case "wheel":
+      handleWheel(message);
+      break;
+    case "tap": {
+      handlePointerMove(message);
+      const picked = pointer.hover >= 0 ? pointer.hover : pickAt(message.x, message.y);
+      if (picked >= 0) {
+        focusStar(picked, approachDistanceForStar(picked), true);
+      }
+      break;
     }
   }
 };
