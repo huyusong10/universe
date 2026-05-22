@@ -1,4 +1,4 @@
-const VERSION = "newnew-stars-observatory-20260501z";
+const VERSION = "unified-active-star-20260511j";
 
 const COPY = {
   en: {
@@ -81,6 +81,7 @@ function updateScaleAxis(element, state) {
 const DEBUG_TEXT_FIELDS = ["starModel", "stellarMaterial"];
 const DEBUG_NUMBER_FIELDS = [
   ["rotationPhase", 3],
+  ["surfaceSpinPhase", 3],
   ["activity", 2],
   ["bridge", 2],
   ["regionalBridgePresence", 2],
@@ -130,16 +131,26 @@ const DEBUG_NUMBER_FIELDS = [
   ["surfaceLayerPickWeight", 2],
   ["celestialBackdropPresence", 2],
   ["localSystemPresence", 2],
+  ["activeStarCloseness", 2],
   ["surfaceViewRadiusStarR", 2],
   ["surfaceReadiness", 2],
   ["surfaceDepth", 2],
   ["contextScale", 2],
   ["activeImpostorScale", 2],
   ["activeHaloRatio", 2],
+  ["activeGlowStrength", 2],
+  ["activeGlowRadius", 1],
+  ["stellarOpticalLeadIn", 2],
+  ["activePrimaryAlpha", 2],
+  ["activeSurfaceDetailAlpha", 2],
+  ["activePhotosphereAlpha", 2],
+  ["activeCoronaAlpha", 2],
   ["approach", 2],
   ["surface", 2],
   ["surfacePresence", 2],
   ["scaleTarget", "compact"],
+  ["cameraYaw", 3],
+  ["cameraTilt", 3],
   ["cameraFov", 2],
   ["distance", 1],
   ["distanceTarget", 1],
@@ -221,6 +232,12 @@ export function bootStarsObservatory(options) {
 
   function send(type, payload = {}) {
     if (!destroyed) worker.postMessage({ type, ...payload });
+  }
+
+  if (debugEnabled) {
+    window.__universeOsDebugDrag = ({ x = 720, y = 450, dx = 0, dy = 0 } = {}) => {
+      send("drag", { x, y, dx, dy });
+    };
   }
 
   function resize() {
@@ -310,7 +327,11 @@ export function bootStarsObservatory(options) {
 
   scene.addEventListener("pointerdown", (event) => {
     pointerId = event.pointerId;
-    scene.setPointerCapture(pointerId);
+    try {
+      scene.setPointerCapture(pointerId);
+    } catch {
+      // Synthetic PointerEvents used by visual smoke tests may not be capture-eligible.
+    }
     scene.classList.add("is-dragging");
     lastPoint = canvasPoint(event, scene);
     dragDistance = 0;
@@ -370,6 +391,7 @@ export function bootStarsObservatory(options) {
   return {
     destroy() {
       destroyed = true;
+      if (window.__universeOsDebugDrag) delete window.__universeOsDebugDrag;
       window.cancelAnimationFrame(resizeFrame);
       window.removeEventListener("resize", resize);
       observer.disconnect();
