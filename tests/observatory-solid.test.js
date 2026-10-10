@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import {createHash} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
 import {createCatalog,prepareBodyGeometry,bodyRayIntersection} from '../assets/observatory-model.js';
 import {createBodyMotion,observingBody} from '../assets/observatory-motion.js';
 import {SOLID_DATA} from '../assets/observatory-solid-data.js';
@@ -118,4 +119,28 @@ test('compressed solids decode to the exact raw atlas and retain raw loading wit
  const rawBytes=SOLID_DATA.files.reduce((sum,file)=>sum+file.bytes,0);
  const transferBytes=SOLID_DATA.files.reduce((sum,file)=>sum+file.packed.bytes,0);
  assert.ok(transferBytes<rawBytes,'lossless transfer reduces bytes without removing geometry');
+});
+
+test('hosted geometry preserves the exact atlas through compressed transfer and recoverable raw shards',async()=>{
+ execFileSync(process.execPath,['tools/build_site.mjs'],{cwd:new URL('../',import.meta.url)});
+ const hash=data=>createHash('sha256').update(new Uint8Array(data.buffer,data.byteOffset,data.byteLength)).digest('hex');
+ for(const compressed of [true,false]) {
+  const instance=await import(`../dist/assets/observatory-solid-geometry.js?hosting-${compressed}`);
+  if(!compressed) {
+   await assert.rejects(instance.loadSolidGeometry(async url=>{
+    if(url.pathname.includes('.part-'))return {ok:false,status:404};
+    return fetchGeometry(url);
+   },{compressed}),/unavailable/);
+   assert.equal(instance.solidGeometryReady(),false);
+   await assert.rejects(instance.loadSolidGeometry(async url=>{
+    const response=await fetchGeometry(url),bytes=await response.arrayBuffer();
+    if(url.pathname.includes('.part-'))new Uint8Array(bytes)[0]^=1;
+    return {ok:true,arrayBuffer:async()=>bytes};
+   },{compressed}),/modified/);
+   assert.equal(instance.solidGeometryReady(),false);
+  }
+  const result=await instance.loadSolidGeometry(fetchGeometry,{compressed});
+  assert.equal(hash(result.nodes),hash(atlas.nodes));
+  assert.equal(hash(result.surfaceData),hash(atlas.surfaceData));
+ }
 });

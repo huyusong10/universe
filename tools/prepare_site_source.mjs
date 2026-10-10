@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -28,6 +28,6 @@ writeFileSync(path.join(target, 'package.json'), `${JSON.stringify({
 }, null, 2)}\n`);
 writeFileSync(path.join(target, '.openai/release.json'), `${JSON.stringify({
   source_commit: commit,
-  geometry_transport: 'gzip-with-http-decoded-raw-endpoints',
+  geometry_transport: 'gzip-with-verified-raw-shards',
 }, null, 2)}\n`);
 console.log(JSON.stringify({ source_commit: commit, checkout_path: target }));

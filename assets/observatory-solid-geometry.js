@@ -13,10 +13,22 @@ export async function loadSolidGeometry(fetcher=fetch,{compressed=typeof Decompr
   pending=(async()=>{
     const chunks=await Promise.all(SOLID_DATA.files.map(async file=>{
       const transfer=compressed&&file.packed?file.packed:file;
-      const url=new URL(`./geometry/${transfer.file}?v=${transfer.sha256.slice(0,16)}`,import.meta.url);
-      const response=await fetcher(url);
-      if(!response.ok) throw new Error(`Celestial geometry unavailable (${response.status}).`);
-      let bytes=await response.arrayBuffer();
+      const buffers=await Promise.all((transfer.parts||[transfer.file]).map(async name=>{
+        const url=new URL(`./geometry/${name}?v=${transfer.sha256.slice(0,16)}`,import.meta.url);
+        const response=await fetcher(url);
+        if(!response.ok) throw new Error(`Celestial geometry unavailable (${response.status}).`);
+        return response.arrayBuffer();
+      }));
+      let bytes=buffers[0];
+      if(transfer.parts) {
+        const joined=new Uint8Array(transfer.bytes);let offset=0;
+        for(const buffer of buffers) {
+          if(offset+buffer.byteLength>joined.length) throw new Error('Celestial geometry is incomplete.');
+          joined.set(new Uint8Array(buffer),offset);offset+=buffer.byteLength;
+        }
+        if(offset!==joined.length) throw new Error('Celestial geometry is incomplete.');
+        bytes=joined.buffer;
+      }
       async function verify(data,expected) {
         if(data.byteLength!==expected.bytes) throw new Error('Celestial geometry is incomplete.');
         const digest=await crypto.subtle.digest('SHA-256',data);

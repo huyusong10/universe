@@ -13,8 +13,8 @@ cpSync(new URL('assets/', root), new URL('assets/', output), {
   recursive: true,
   filter: path => !path.endsWith('/.DS_Store') && !path.endsWith('.bin'),
 });
-const headers = [];
-for (const file of SOLID_DATA.files) {
+const manifest = structuredClone(SOLID_DATA);
+for (const file of manifest.files) {
   const packed = readFileSync(new URL(`assets/geometry/${file.packed.file}`, root));
   const decoded = gunzipSync(packed);
   const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -22,9 +22,18 @@ for (const file of SOLID_DATA.files) {
       decoded.length !== file.bytes || hash(decoded) !== file.sha256) {
     throw new Error(`Invalid geometry resource: ${file.file}`);
   }
-  // HTTP decoding retains the raw endpoint for browsers without stream decoding.
-  writeFileSync(new URL(`assets/geometry/${file.file}`, output), packed);
-  headers.push(`/assets/geometry/${file.file}\n  Content-Encoding: gzip\n  Content-Type: application/octet-stream`);
+  if (decoded.length <= 25 * 1024 * 1024) {
+    writeFileSync(new URL(`assets/geometry/${file.file}`, output), decoded);
+  } else {
+    file.parts = [];
+    const chunkBytes = 16 * 1024 * 1024;
+    for (let offset = 0; offset < decoded.length; offset += chunkBytes) {
+      const name = `${file.file}.part-${file.parts.length + 1}`;
+      file.parts.push(name);
+      writeFileSync(new URL(`assets/geometry/${name}`, output), decoded.subarray(offset, offset + chunkBytes));
+    }
+  }
 }
-writeFileSync(new URL('_headers', output), `${headers.join('\n\n')}\n`);
+writeFileSync(new URL('assets/observatory-solid-data.js', output),
+  `// Generated hosting metadata; geometry identities and hashes are unchanged.\nexport const SOLID_DATA=Object.freeze(${JSON.stringify(manifest)});\n`);
 console.log(`Static site prepared: ${fileURLToPath(output)}`);
