@@ -1,0 +1,4 @@
+# Optional dependencies for the real-browser journey, not the default tests.
+playwright>=1.51,<2
+Pillow>=11,<13
+numpy

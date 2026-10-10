@@ -1,95 +1,45 @@
-# Evolution Toward 100,000 Stars
+# 连续尺度旅行与渲染边界
 
-Status: Active implementation
+状态：当前设计决策
 
-Date: 2026-05-01
+日期：2026-10-01；扩展：2026-10-05
 
 ## 目标
 
-把当前观测台从“克制的 catalog 星图仪”演进为更接近 `100,000 Stars` 的电影化尺度旅行体验：更强的银心、星云、光学镜头感、中景桥接层和近景恒星活性。
+用户已授权整体视觉重构，并明确要求更浩瀚的空间、可辨认的尺度过渡、持续演化的末段背景与更多动态。重构保护原有产品语义：同一 catalog 的连续尺度旅行、显式焦点、Worker 所有权、固定绘制预算、低干扰界面和可访问输入。
 
-这不是 1:1 复刻。当前项目要保留 Worker/WebGPU 架构、同一 catalog 连续 LOD 语义、固定预算和低 HUD 设计；借鉴的是美术动势和尺度感，不借用老项目的 DOM 标记堆叠、硬切层级或英文文案契约。
+## 为什么替换
 
-## 稳定不变量
+原实现把 WebGPU 球体、2D 表面贴图、光晕、亮度保底和多个阶段的交接补偿叠加在一起。颜色在到达显示前可能截白；二维贴图漂移不能证明球面旋转；屏幕半径与相机距离分别控制，持续滚轮可能只改变状态而没有相应的尺度反馈。
 
-| 不变量 | 约束 |
-| --- | --- |
-| Catalog 连续性 | 宏观亮点、中景目标、近景 active 恒星、标签和点击热区必须来自同一 catalog 索引。 |
-| LOD 连续性 | 缩放时允许局部光学、参考层、标签权重和拾取权重变化；相邻星图 LOD 的 star core 必须保持连续，不能把核心亮度或核心半径绑定到 layer opacity/point-scale crossfade，避免拉近时整批恒星先变淡变小再突然亮起；旧层必须先收缩 halo、标签和拾取权重，再让新层接管主体，但星点 PSF、小 halo 和弱密度点面积必须保留连续预算，拉近导致星群摊开时只能用局部点核/密度点足迹和能量补偿，避免星点先瘦成硬核再恢复光学体积；过渡必须由清晰点核、active 周边低强度 bridge、几何参照和 active sphere 主体接管完成，不能在 Galactic 到 Regional 的 overlap 中用远景 veil 突然退场制造亮度凹槽，也不能让局部补偿和 Regional bridge 同峰叠加成短暂过曝，不能在 Regional bridge 退场与 LocalSystem/Sphere 接管之间留下中心亮度空窗；连续滚轮期间，目标距离更新、相机追随和分层光学预算必须时间连续，不能因为输入突发或 WebGPU/overlay 合成相位差产生帧间亮度闪烁；active bridge 可以短暂承接到早期 LocalSystem，但只能锚定同一个 active 目标，不能让非 active metric 星图继续留在局部空间，也不能依赖全局柔焦、屏幕级 veil 或全局曝光抽动掩盖接缝；Surface 主体变大时必须通过半径曲线和面积能量补偿锚定亮度，不能把 sphere 面积增长变成整屏明暗提示；进入局部系统后，非 active 恒星必须从局部 metric space 退场，而不是继续作为近处星点存在；`Surface` 只有在 active sphere 可读后才成为语义阶段。 |
-| 视觉主次 | catalog 恒星承担主视觉；星云、尘带、lens flare、参考环和背景星尘只增强尺度与空间感。halo 是局部光学效果，不能替代主体或形成持续的全屏朦胧层。 |
-| 交互主流程 | 拖拽、滚轮、点击聚焦和 idle orbit 仍是核心旅程，不能被面板、教程或常驻说明打断。 |
-| 性能预算 | 美术增强必须保持固定同屏复杂度，不能引入每星 DOM、每星 mesh/material 或无界标签。 |
-| 多语言与可访问性 | 不把具体说明文案、字体效果或语言内容写成稳定契约。 |
+旧设计和验证进一步固化了这些补偿配方，导致更换正确的底层实现反而需要维护大量私有常数与源码字符串。当前决策用统一几何和颜色路径替换这些约束。单纯扩大同一星图仍不足以表达跨尺度旅行：极近景相机位移相对星间距离太小，背景自然趋于静止，因此需要有明确语义的远场环境与局部空间参照。
 
-## 对照观察
+## 选择与取舍
 
-`100,000 Stars` 的优势不只是静态画面，而是缩放时的多层响应：
-
-| 尺度 | 对照项目的美术经验 | 当前项目差距 |
+| 选择 | 保护的目标 | 代价与边界 |
 | --- | --- | --- |
-| Galactic | 高亮银心、蓝紫星云、尘带、倾斜银河盘和强 bloom 共同建立远景冲击力。 | 结构清楚但偏安静，银心过白且旋臂/尘带偏软，缺少镜头曝光和色散变化。 |
-| Regional | 近邻星有强 halo、距离线、命名注记和 Oort Cloud 等桥接元素，帮助用户理解尺度变化。 | `Galactic` 辅助层退场后，需要明确的 `LocalMap -> LocalSystem` 桥，而不是黑底地图和文字。 |
-| Local | 近景恒星有本地系统层、表面纹理、corona、flare、lens flare 和持续扰动。 | 当前阶段把 Local 拆成星图入口、本地系统和表面三段；后续仍需要更丰富的 flare、磁场线和遮挡。 |
-| Motion | 相机缩放、FOV、点尺寸、局部光学、蓝移和层级淡入淡出共同制造“旅行感”，全局曝光不承担阶段切换提示。 | 当前主要是相机 scale 缓动与慢 orbit，光学响应较少。 |
+| 唯一有效透视镜头与球体/环带/气体空间 | 缩放、遮挡和拖拽有一致的几何含义 | 压缩的世界单位服务交互，不声称天体测量精度。 |
+| 物体坐标中的分类材质 | 恒星自发光，行星从远处到近景均受同帧所属恒星照明，地形调制不制造暗面光斑；星云通过可进入的透明云层呈现延展空间；同一目标的结构随视角变化 | 只为一个观察主体承担有上限的高细节计算；气体没有固体表面和不透明球体遮挡，近景切换先退离再交接，品质通过真实图像评审。 |
+| GPU 场景合成后统一色调映射 | 明亮表面仍保留变化，光晕与主体共享曝光逻辑 | 需要浮点中间目标；分辨率和采样服从运行预算。 |
+| 2D 层只绘制有限地图注记 | 消除独立表面、漂移贴图和多套亮度叠加 | 旧的 surface atlas 与辅助光学绘制不再属于当前契约。 |
+| 基于距离和屏幕覆盖的尺度表现 | 从远处目标到球面或云中持续响应同一相机；周围空间提供旅行感，观察相机保持目标锚点与朝向 | 原先随缩放改变视场、姿态和闲置自动环绕已被稳定观察镜头替代；显式目标飞行可采用可中断的抵达构图；长距离接近、退离与尺度选择按感知尺度安排节奏，保留中间空间，短距离输入仍响应。 |
+| 分层空间环境 | 银河辐射/暗尘、远天球和稀薄局部粒子使背景随旅行演化，近景能分辨主体活动与远近参照；银河气体与其前后星光共用空间消光边界，侧面观察仍有体积线索 | 外部盘面与内部全景沿观察者位置连续交接，共享银河平面与观测时钟；天幕与实体沿用同一镜头，远景不另行改变视场；辅助内容不可拾取，数量和纹理资源固定，空间采样有界；素材来源单独索引，不成为 catalog 数据。 |
+| 有限画质与资源所有权 | 用户可在原观察与飞行路径中改变表现精细度 | 目录身份与相机不随档位重建；纹理、体积采样和各绘制目标分别有界，准备完整的新资源后再交接。体积可独立重建至场景分辨率，仍保持统一透明合成；实际性能须在目标硬件测量。 |
+| 受控动态 | 独立观测时钟让表面转动、彗尾传播、星系、气体与有限轨道活动可观察、可暂停、恢复和有限加速，导航仍由用户掌控 | 绘制与实体拾取使用同一当前姿态，银河恒星、气体与尘埃共享空间变换，星系辅助星光跟随所属结构；实时减少动态优先，目录数据保持稳定，有限行星家族与有来源双星的轨道姿态由同一时钟派生，镜头平移跟随当前主体；不依靠曝光跳变或无界粒子。 |
+| 纯模型快检 + 浏览器 journey + 视觉 review | 分别证明确定行为、真实运行与审美质量 | 连续视频、关键帧和运行数据需在实际 GPU 环境采集，默认快检不能替代。 |
 
-## 当前阶段
+## 被替代的约束
 
-当前开发阶段聚焦最大的 gap：`LOD Visibility And Continuity`。验收标准是滚轮缩放完成 `Galactic -> Regional -> LocalMap -> LocalSystem -> Surface` 的连续尺度旅行，并像 `100,000 Stars` 一样以 Sol 作为默认焦点；滚轮必须即时改变目标距离，真实相机快速追随目标距离，不能直接跳帧也不能拖得迟钝。点击 catalog 恒星后，切换焦点并用同一套世界中心化和缩放动画快速到达该目标的近景尺度。点击落点不是缩放硬终点，焦点建立后滚轮仍可继续向内推进。焦点恒星必须是绑定 catalog 目标的唯一 active sphere，而不是独立 2D 圆盘或贴图假体；canvas 可提供随 active sphere 半径和 presence 耦合的表面可见辅助层，但不能拥有独立实体、拾取或尺度语义。该 sphere 是绑定 catalog 目标的 local-domain 表面模型，不是 catalog map 单位里的巨大固定半径球。尺度栏表达语义阶段进度，不直接暴露 raw distance；LOD 过渡由 layer optical mixer 管理，旧层 halo、标签和拾取权重退场后，新层才成为主体；相邻星图 LOD 的星点核心和小 halo 面积保持连续，不能因 layer opacity/point-scale/halo crossfade 周期性熄灭或收缩；Galactic 到 Regional 的远景 veil、exposure 和 PSF 面积必须连续，Regional active bridge 退场后必须由 LocalMap 的低强度 active bridge 接续到早期 LocalSystem，直到系统 shell 接管中心亮度，避免中心先亮、再暗、再亮；过渡中的清晰点核、细参考线和 sphere 轮廓优先于大面积柔光或全局明暗变化。debug 中的 radius/presence/readiness/depth 不能替代真实画面：close sphere 必须实际出现实体球体轮廓、非均匀自发光表面和边缘 emission。进入 `LocalSystem` 后，非 active 恒星必须退出局部 metric space，转为极远天球背景或淡出，但远景天球、系统 shell、参考环和 active 锚点必须避免空黑断层；`Surface` 必须等 active sphere 可读接管、active billboard 退为弱锚点后才成为语义阶段。
+先前关于 2D photosphere atlas、固定近景屏幕半径、阶段独立光学补偿、bridge/veil 能量曲线和具体 shader 表达式的要求已被本决策替代。它们是原实现的手段，不再作为稳定行为继续维护。
 
-## 演进方向
+本次在原有两份设计文档中收敛边界，并用可观察契约替换旧烟测；不新增逐次调参历史或重复的回归说明。
 
-### Galactic
+## 验收依据
 
-- 提升银心和旋臂的层次：让 catalog 密度、色温和亮度形成主结构，辅助 filaments 只能做低强度结构提示，不能作为全局柔焦过渡层。
-- 增强尘带：从均匀暗线改为随旋臂、视角和 zoom 连续变化的遮蔽/吸收层。
-- 引入尺度相关局部光学：远景允许更强的层内 bloom、色散和边缘暗角；进入中景时逐步收束，但不能用全局曝光跳变表达 LOD。
-- 进入 Regional 前，大尺度星点应先收缩 point size 和 halo，再降低 opacity，避免新旧尺度同时成为主体。
-- 保持宏观标签克制：只标注高权重 catalog 目标和必要区域锚点。
+- 种子、catalog 身份、固定预算、透视投影和相机往返由默认快检验证。
+- 真实浏览器验证从总览到表面再返航，点击后继续接近，拖拽有可见响应，语言与能力状态正确。
+- 审阅总览到表面的连续视频及末段连续关键帧：银河有规模与深度，阶段主次明确，主体外背景随接近演化，停留时表面和日冕仍有可追踪活动。
+- 背景 mask 与像素变化仅作审阅证据，不以固定美术阈值替代判断；实时减少动态偏好必须停住自动动画，同时允许直接缩放。
+- 实际运行结果和残余环境限制记录在交付说明，不把“已完成”写成未经验证的设计事实。
 
-### Regional
-
-- 新增桥接视觉层：命名星 halo、弱距离线、局部参考弧、稀疏坐标提示和 active 周边邻域。
-- 让银河背景慢退而不是突然消失：中景仍能看到远处结构残影，避免黑场。
-- 标签按语义稳定重权：active/hover、命名星、近邻和高亮目标优先；拖动与缩放中只更新位置和透明度。
-- 进入 LocalMap 前，Regional 星点、halo、标签和拾取权重应同步退场，active halo 保留为焦点锚点。
-- 点击聚焦时让目标光晕、标签、背景 dim 和相机 scale 同步变化，形成明确的飞抵感。
-
-### Local
-
-- 把近景拆成 `LocalMap`、`LocalSystem` 和 `Surface`：默认焦点是 Sol；点击目标后切换焦点，让世界中心化、相机距离、active billboard、远景天球、local system shell 和 active sphere 沿同一路径发生；Local 入口只能看到星点或很小的 surface preview，继续向内滚轮或点击飞抵后才逐步显出表面。
-- 把近景恒星从塑料感光照升级为真实球体上的自发光动态表面：低频等离子纹理、稳定自转、颗粒、活动亮区、暗斑、边缘 emission、corona shell 和少量 flare。
-- 近景不再保留近处星图上下文：非 active 恒星退出局部 metric space，只能作为极远天球背景或消失；尺度环、系统 shell、赤道/倾角参考和辅助弧承担局部空间感，避免 LocalSystem 变成空黑单标签画面。
-- 根据 catalog 色温和亮度驱动恒星颜色、光晕范围、表面活性和 lens flare 强度。
-- 只允许当前 active 目标使用高成本近景表现，其他恒星继续使用 impostor 或点层。
-
-## 分阶段计划
-
-| 阶段 | 目标 | 完成信号 |
-| --- | --- | --- |
-| 0. Baseline | 初始化 git 并记录当前稳定契约。 | 当前代码有 baseline commit；`design/README.md` 存在。 |
-| 1. Capture | 建立 LOD 视觉检查基线。 | 能固定种子抓取 Galactic、Regional、LocalMap、LocalSystem、Surface、飞抵过程和 zoom-out 画面；截图或视频不依赖人工临时操作。 |
-| 2. Optical Response | 为缩放加入曝光、点尺寸、halo、soft focus 和色散响应。 | 静态三段 LOD 与滚轮过程都能读出尺度变化，且没有星群替换断层。 |
-| 3. Regional Bridge | 补足中景桥接层。 | Regional 不再像空黑地图；active 周边、距离感和远景残影同时可读。 |
-| 4. True Active Star | 建立 WebGPU active sphere 底座，再在其上升级表面、corona、flare 和接近连续性。 | Local 边界不硬切表面；默认滚轮沿 Sol 连续进入；点击目标后从同一 catalog 位置连续进入真实球体近景，且还能继续缩放。 |
-| 4.5. Stellar Material And Reference | 把 active sphere 材质改为自发光恒星材质，并建立 Local 参照系。 | close sphere 能读出非均匀表面、自转相位、边缘 emission 和低亮 reference frame；active label 不压住球心。 |
-| 4.6. LOD Visibility And Continuity | 修正 debug 状态与实际画面的可见性错位，并重建 LocalMap 到 Surface 的连续桥。 | 连续滚轮帧序列不出现帧间亮度闪烁；`Galactic-regional-tail`、`Galactic-regional-mix` 和 `Regional-entry` 不出现 veil/exposure 亮度凹槽、星点 PSF/halo/密度点面积塌陷或短暂过曝峰值；`Regional-entry` 已有 bridge，Regional 到 LocalMap/早期 LocalSystem 有低强度 active bridge 接续，`Local-map-entry` 不黑场，相邻星图 LOD handoff 不会把 star core 周期性压暗或缩小，`Local-system-entry` 和 `Local-system` 的 active 中心亮度不能明显低于 LocalMap，`Local-system` 中非 active 恒星退出 metric space 并转为远景天球且不空洞，早期 `Sphere-emerge` 仍属 `LocalSystem`，`Sphere-close` 由可读 active sphere 接管；active billboard 退为弱锚点；active sphere 半径经过中间阶段且不短距离爆发；深 Surface 继续推进 surface depth；zoom-out 时 sphere/reference 退场且 active 身份保持；LocalSystem/Surface 不依赖全局 veil、大面积 halo 或全局曝光抽动维持连续感。 |
-| 4.7. Semantic Scale And Layer Mixer | 修正尺度轴虚位，并让每个 LOD 层以 halo、标签和拾取权重退场，同时保持星点核心连续。 | 尺度栏按语义阶段推进；滚轮过渡中旧层语义先退远，新层再成为主体；debug 暴露 layer presence、halo scale、metric core continuity、label weight 和 pick weight。 |
-| 5. Label And Scale UX | 调整标签和尺度轴的权重、出现时机和动态稳定性。 | 标签不洗牌、不压过星体；尺度状态可读但不抢画面。 |
-| 6. Verification | 把高风险历史坑沉淀为测试或脚本。 | 有自动化入口验证 LOD 状态、预算边界、启动能力拦截和核心交互。 |
-
-## 验证策略
-
-| 验证类型 | 覆盖内容 |
-| --- | --- |
-| 固定种子视觉截图 | Galactic、Regional-entry、Regional-mid、Local-map-entry、Local-system、Sphere-emerge、Sphere-close、Local-reference、点击飞抵、焦点继续深缩放、Zoom-out 返航。 |
-| 动态录制或帧采样 | 缩放过程是否连续，star core 是否保持连续而不是先灭再亮，背景亮度、主体亮度、标签、semantic scale axis、layer mixer、camera FOV、active sphere 半径和 sphere 接管是否跳变。 |
-| Debug 状态检查 | LOD、scale stage、scale axis progress、layer presence、point/halo scale、metric core visibility/radius continuity、metric PSF continuity、label/pick weight、surface readiness/depth、global veil/haze budget、active halo ratio、exposure、catalog、draw、labels、fps、celestial backdrop presence 和 active 目标是否在预算内。 |
-| 性能预算 | 标准 catalog 与压测 catalog 都不能线性增加标签、拾取或主线程工作。 |
-| 无障碍/多语言检查 | 状态语义、交互入口和测试锚点不依赖固定展示文案。 |
-
-## 非目标
-
-- 不把 `100,000 Stars` 的 DOM 标签、旧 Three.js 对象结构或硬切阈值照搬为架构。
-- 不新增大面积教程、常驻详情卡或营销式落地页。
-- 不把具体英文/中文文案、CSS 类名、DOM 层级或 shader 内部变量写成契约。
-- 不为了远景电影感牺牲 catalog 可导航性。
+具体运行入口和当前稳定声明见 [README.md](README.md)。

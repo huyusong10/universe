@@ -1,0 +1,645 @@
+{
+  "format": "indexed float32 position/normal pairs; vec4 uint32 triangle references; balanced escape BVH with four-face leaves",
+  "faceBudget": 16384,
+  "worlds": {
+    "eris": {
+      "kind": "authored",
+      "seed": 2625333411,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "haumea": {
+      "kind": "authored",
+      "seed": 495228101,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "makemake": {
+      "kind": "authored",
+      "seed": 586366734,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "sedna": {
+      "kind": "authored",
+      "seed": 376445126,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "quaoar": {
+      "kind": "authored",
+      "seed": 3374554858,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "orcus": {
+      "kind": "authored",
+      "seed": 3077203574,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "gonggong": {
+      "kind": "authored",
+      "seed": 3303777513,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "salacia": {
+      "kind": "authored",
+      "seed": 4211383643,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "varda": {
+      "kind": "authored",
+      "seed": 1601891266,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "varuna": {
+      "kind": "authored",
+      "seed": 754957668,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "ixion": {
+      "kind": "authored",
+      "seed": 3252446498,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "ms4": {
+      "kind": "authored",
+      "seed": 1101426925,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "vesta": {
+      "source": "vesta.glb",
+      "sourceSha256": "6f00df4977c211a75fce65dd2badc9f39b12b58d3386e130c89f491dbc8f530b",
+      "sourceVertices": 17282,
+      "sourceFaces": 34560,
+      "kind": "source-derived",
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "eros": {
+      "source": "eros.glb",
+      "sourceSha256": "4e4eab5ebf3553f78713b48db7dde601634094e85363caa5b48fbd869933b7b2",
+      "sourceVertices": 770,
+      "sourceFaces": 1536,
+      "kind": "source-derived",
+      "vertices": 770,
+      "faces": 1536,
+      "nodes": 1023,
+      "withinOriginalEllipsoid": true
+    },
+    "bennu": {
+      "source": "bennu.glb",
+      "sourceSha256": "b7740b53a77ff538082d26e7079510ef7810fc3de9a5ff0fa316b393d2cf700e",
+      "sourceVertices": 1348,
+      "sourceFaces": 2692,
+      "kind": "source-derived",
+      "vertices": 1348,
+      "faces": 2692,
+      "nodes": 2047,
+      "withinOriginalEllipsoid": true
+    },
+    "ryugu": {
+      "kind": "authored",
+      "seed": 3041950866,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "itokawa": {
+      "source": "itokawa.txt.gz",
+      "sourceSha256": "0312b37a9b131cf12bca810715902c0a5a4040d29b1bb83cb034a90cd1d279d2",
+      "sourceVertices": 24933,
+      "sourceFaces": 49152,
+      "kind": "source-derived",
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "lutetia": {
+      "kind": "authored",
+      "seed": 1581172707,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "ida": {
+      "kind": "authored",
+      "seed": 261592250,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "mathilde": {
+      "kind": "authored",
+      "seed": 3883968184,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "psyche": {
+      "kind": "authored",
+      "seed": 2337241222,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "gaspra": {
+      "kind": "authored",
+      "seed": 314207523,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "steins": {
+      "kind": "authored",
+      "seed": 2594289396,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "arrokoth": {
+      "kind": "authored",
+      "seed": 3540235077,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "chariklo": {
+      "kind": "authored",
+      "seed": 953763368,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "kleopatra": {
+      "kind": "authored",
+      "seed": 1945250842,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "hygiea": {
+      "kind": "authored",
+      "seed": 421023788,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "phobos": {
+      "source": "phobos.glb",
+      "sourceSha256": "757712101e4fbcf9527942ee664a3bc6dfe3ab460466b760f4bf51ee85dbd8d3",
+      "sourceVertices": 16022,
+      "sourceFaces": 32040,
+      "kind": "source-derived",
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "deimos": {
+      "source": "deimos.glb",
+      "sourceSha256": "5d5da763970acffe88aac26d3c3bd0fa66c5bef251d1bb4bfe2ae5fd723507e4",
+      "sourceVertices": 16258,
+      "sourceFaces": 32512,
+      "kind": "source-derived",
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "rhea": {
+      "kind": "authored",
+      "seed": 3039895836,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "dione": {
+      "kind": "authored",
+      "seed": 2099215594,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "tethys": {
+      "kind": "authored",
+      "seed": 3391130025,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "proteus": {
+      "kind": "authored",
+      "seed": 3022191374,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "dactyl": {
+      "kind": "authored",
+      "seed": 214684185,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "hyperion": {
+      "kind": "authored",
+      "seed": 2719216337,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "pan": {
+      "kind": "authored",
+      "seed": 3971391294,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "atlas": {
+      "kind": "authored",
+      "seed": 275459842,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "phoebe": {
+      "kind": "authored",
+      "seed": 2457813905,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "nereid": {
+      "kind": "authored",
+      "seed": 2226960472,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "amalthea": {
+      "kind": "authored",
+      "seed": 1916536210,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "thebe": {
+      "kind": "authored",
+      "seed": 1235965054,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "himalia": {
+      "kind": "authored",
+      "seed": 3343667984,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "janus": {
+      "kind": "authored",
+      "seed": 3097241482,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "epimetheus": {
+      "kind": "authored",
+      "seed": 4106433625,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "helene": {
+      "kind": "authored",
+      "seed": 1078464473,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "telesto": {
+      "kind": "authored",
+      "seed": 4264475759,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "calypso": {
+      "kind": "authored",
+      "seed": 1834326813,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "prometheus": {
+      "kind": "authored",
+      "seed": 1080159599,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "pandora": {
+      "kind": "authored",
+      "seed": 2050128387,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "galatea": {
+      "kind": "authored",
+      "seed": 920135586,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "despina": {
+      "kind": "authored",
+      "seed": 3646888447,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "alexhelios": {
+      "kind": "authored",
+      "seed": 1684309973,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "cleoselene": {
+      "kind": "authored",
+      "seed": 600419508,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "styx": {
+      "kind": "authored",
+      "seed": 1498690321,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "nix": {
+      "kind": "authored",
+      "seed": 4132054299,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "kerberos": {
+      "kind": "authored",
+      "seed": 3554713319,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "hydra": {
+      "kind": "authored",
+      "seed": 1612857662,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "dysnomia": {
+      "kind": "authored",
+      "seed": 1540582974,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "hiiaka": {
+      "kind": "authored",
+      "seed": 1173604180,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "namaka": {
+      "kind": "authored",
+      "seed": 1611886713,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "mk2": {
+      "kind": "authored",
+      "seed": 1005694869,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "vanth": {
+      "kind": "authored",
+      "seed": 3681644357,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "xiangliu": {
+      "kind": "authored",
+      "seed": 2535312714,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "actaea": {
+      "kind": "authored",
+      "seed": 513802069,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "ilmare": {
+      "kind": "authored",
+      "seed": 2384545310,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "weywot": {
+      "kind": "authored",
+      "seed": 1505956284,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "halley": {
+      "kind": "authored",
+      "seed": 419409639,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "wild2": {
+      "kind": "authored",
+      "seed": 1108913270,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "tempel1": {
+      "kind": "authored",
+      "seed": 4058204774,
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    },
+    "rosettacomet": {
+      "source": "67p-navcam.obj",
+      "sourceSha256": "e90fd0b7d86bc826cf967e2e0234a945c55be7dfd2f710c00e11ed953b14f801",
+      "sourceVertices": 52098,
+      "sourceFaces": 104192,
+      "kind": "source-derived",
+      "vertices": 8194,
+      "faces": 16384,
+      "nodes": 8191,
+      "withinOriginalEllipsoid": true
+    }
+  },
+  "files": [
+    {
+      "part": "worlds",
+      "kind": "nodes",
+      "file": "worlds-nodes.bin",
+      "bytes": 17659744,
+      "sha256": "34af89bc374cbe8f98795741a3d6413af83072d9946155071b5399d3fb2793ff",
+      "packed": {
+        "file": "worlds-nodes.bin.gz",
+        "bytes": 8872667,
+        "sha256": "871a27c5a4239814ea4e842eee744adfa083a13d11c34fea96749d80d3843d6a",
+        "encoding": "gzip"
+      }
+    },
+    {
+      "part": "worlds",
+      "kind": "triangles",
+      "file": "worlds-triangles.bin",
+      "bytes": 35297664,
+      "sha256": "a6483f05801dcd4360d3a5d954ce7f4a7d621a75282128a6c4fbf186026d1955",
+      "packed": {
+        "file": "worlds-triangles.bin.gz",
+        "bytes": 18460231,
+        "sha256": "7890ca1230e43ae1bb4e8a6858e15d4c73b57db48f3feda1c226121cccb14a5f",
+        "encoding": "gzip"
+      },
+      "triangleCount": 1103872,
+      "vertexCount": 551116
+    },
+    {
+      "part": "rosetta",
+      "kind": "nodes",
+      "file": "rosetta-nodes.bin",
+      "bytes": 262112,
+      "sha256": "4db27a03aa0a521b2430bbacc5b65935fc598587d181e75b29bb12ee682aaf3f",
+      "packed": {
+        "file": "rosetta-nodes.bin.gz",
+        "bytes": 129012,
+        "sha256": "d962d562941b62c7e5a2bd7e6d2775e9bb81acfc0fcb8092bec25449771b1dca",
+        "encoding": "gzip"
+      }
+    },
+    {
+      "part": "rosetta",
+      "kind": "triangles",
+      "file": "rosetta-triangles.bin",
+      "bytes": 524352,
+      "sha256": "5763eedddb68a44fca7dd4a6c841c6ed61998636647d60f6dfddb2fba242478f",
+      "packed": {
+        "file": "rosetta-triangles.bin.gz",
+        "bytes": 275688,
+        "sha256": "17fa5cdbde7982713ae9c168442c201a9a071cefc170ea831a04a13ac1b7b4ba",
+        "encoding": "gzip"
+      },
+      "triangleCount": 16384,
+      "vertexCount": 8194
+    }
+  ]
+}

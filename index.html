@@ -3,176 +3,380 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
-    <meta http-equiv="Pragma" content="no-cache" />
-    <meta http-equiv="Expires" content="0" />
-    <title>100,000 Stars Style Observatory</title>
+    <meta name="theme-color" content="#03050a" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2303050a'/%3E%3Ccircle cx='16' cy='16' r='10' fill='none' stroke='%23eee9df' stroke-opacity='.35'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%23eee9df'/%3E%3C/svg%3E" />
+    <title>Universe — Cosmic Observatory</title>
     <style>
       :root {
         color-scheme: dark;
-        --scale-progress: 0.08;
+        --ink: #eee9df;
+        --muted: #9c9c9d;
+        --observatory-surface: #08101aee;
+        --scale-progress: 0;
       }
 
-      * {
-        box-sizing: border-box;
-      }
+      * { box-sizing: border-box; }
 
-      html,
-      body {
+      html, body {
         width: 100%;
         height: 100%;
         margin: 0;
         overflow: hidden;
-        background: #01040a;
-        color: rgba(232, 241, 255, 0.9);
-        font-family:
-          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
-          "Segoe UI", sans-serif;
-      }
-
-      body {
-        min-width: 920px;
+        background: #03050a;
+        color: var(--ink);
+        font-family: "Avenir Next", Avenir, "Helvetica Neue", sans-serif;
+        -webkit-font-smoothing: antialiased;
       }
 
       .observatory {
         position: fixed;
         inset: 0;
         isolation: isolate;
-        background:
-          radial-gradient(circle at 49% 48%, rgba(32, 43, 63, 0.22), transparent 28%),
-          radial-gradient(circle at 50% 54%, rgba(15, 22, 36, 0.24), transparent 54%),
-          radial-gradient(circle at 50% 100%, rgba(3, 7, 16, 0.92), transparent 62%),
-          #01040a;
+        background: #03050a;
       }
 
-      .scene-canvas,
-      .label-canvas {
+      .scene-canvas, .label-canvas {
         position: absolute;
         inset: 0;
+        display: block;
         width: 100%;
         height: 100%;
-        display: block;
+        /* Keep the last frame proportional while the Worker updates its backing size. */
+        object-fit: contain;
       }
 
       .scene-canvas {
         z-index: 0;
-        cursor: grab;
         touch-action: none;
+        outline: none;
+        cursor: grab;
       }
 
-      .scene-canvas.is-dragging {
-        cursor: grabbing;
+      .scene-canvas.is-dragging { cursor: grabbing; }
+
+      .scene-canvas:focus-visible {
+        outline: 1px solid #eee9df70;
+        outline-offset: -6px;
       }
 
-      .label-canvas {
-        z-index: 1;
-        pointer-events: none;
-      }
+      .label-canvas { z-index: 1; pointer-events: none; }
 
-      .scale-axis {
-        position: absolute;
-        z-index: 2;
-        top: 50%;
-        right: 28px;
-        width: 56px;
-        height: min(38vh, 330px);
-        min-height: 224px;
-        transform: translateY(-50%);
-        opacity: 0.82;
-        pointer-events: none;
+      .observation-console {
+        position: absolute; left: 32px; right: 32px; bottom: max(24px, env(safe-area-inset-bottom));
+        width: min(960px, calc(100vw - 64px)); margin-inline: auto; padding: 12px 16px;
+        display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 22px; align-items: center;
+        border: 1px solid #b5c5df30; border-top-color: #d5c5a44d; border-radius: 12px;
+        background: var(--observatory-surface); backdrop-filter: blur(18px); box-shadow: 0 10px 40px #0004;
       }
-
-      .scale-axis::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        right: 12px;
-        bottom: 0;
-        width: 1px;
-        background: linear-gradient(
-          to bottom,
-          rgba(188, 220, 255, 0),
-          rgba(188, 220, 255, 0.46) 18%,
-          rgba(188, 220, 255, 0.38) 82%,
-          rgba(188, 220, 255, 0)
-        );
+      .scale-axis { min-width: 0; pointer-events: auto; }
+      .scale-axis__body { display: grid; grid-template-rows: auto 22px; gap: 2px; min-width: 0; }
+      .scale-axis__stages { display: flex; gap: 3px; min-width: 0; }
+      .scale-axis__tick {
+        position: relative; flex: 1; min-width: 0; min-height: 40px; padding: 5px 6px;
+        color: #aeb9c9; font-size: 11px; font-weight: 400; text-align: center; line-height: 1.35;
+        border: 1px solid transparent; border-radius: 5px; background: transparent; cursor: pointer;
       }
-
+      .scale-axis__tick:hover { color: #f3dfb9; background: #b4c7e214; }
+      .scale-axis__tick[data-current="true"] { color: #f4e6c7; background: #d6bd7c14; border-bottom-color: #d6bd7c; }
+      .scale-axis__tick[data-destination="true"] { border-color: #d6bd7c66; }
+      .scale-axis__tick:focus-visible { outline: 2px solid #e9d3a4; outline-offset: 1px; }
+      .scale-axis__short { display: none; }
+      .scale-axis__rail { position: relative; margin-inline: 8px; }
+      .scale-axis__slider {
+        position: absolute; inset: 0; width: 100%; height: 100%; margin: 0;
+        direction: rtl; appearance: none; background: transparent; cursor: ew-resize; touch-action: none;
+      }
+      .scale-axis__slider::-webkit-slider-runnable-track { height: 1px; background: #a5b0c245; }
+      .scale-axis__slider::-webkit-slider-thumb { appearance: none; width: 10px; height: 10px; margin-top: -4.5px; border: 1px solid #d6bd7c; border-radius: 50%; background: #0b1423; }
+      .scale-axis__slider::-moz-range-track { height: 1px; background: #a5b0c245; }
+      .scale-axis__slider::-moz-range-thumb { width: 8px; height: 8px; border: 1px solid #d6bd7c; border-radius: 50%; background: #0b1423; }
+      .scale-axis__slider:focus-visible { outline: 1px solid #e9d3a4; outline-offset: 1px; border-radius: 6px; }
       .scale-axis__dot {
-        position: absolute;
-        top: calc((1 - var(--scale-progress)) * 100%);
-        right: 7px;
-        width: 11px;
-        height: 11px;
-        border-radius: 50%;
-        transform: translateY(-50%);
-        background: rgba(240, 248, 255, 0.98);
-        box-shadow:
-          0 0 14px rgba(196, 224, 255, 0.72),
-          0 0 34px rgba(103, 166, 238, 0.34);
+        position: absolute; z-index: 1; left: calc(5px + (100% - 10px) * (1 - var(--scale-progress)));
+        top: 50%; width: 4px; height: 4px; border-radius: 50%; transform: translate(-50%, -50%);
+        background: #f4e6c7; box-shadow: 0 0 8px #eee9df66; pointer-events: none;
       }
-
-      .scale-axis__tick {
-        position: absolute;
-        right: 11px;
-        width: 8px;
-        height: 1px;
-        background: rgba(210, 230, 255, 0.4);
-      }
-
-      .scale-axis__tick::after {
-        content: attr(data-label);
-        position: absolute;
-        top: 50%;
-        right: 15px;
-        transform: translateY(-50%);
-        color: rgba(216, 230, 250, 0.48);
-        font-size: 10px;
-        letter-spacing: 0;
-        white-space: nowrap;
-      }
-
-      .scale-axis__tick {
-        top: calc((1 - var(--tick-progress)) * 100%);
-      }
-
-      .status,
-      .debug {
+      .scale-axis__hint { display: none; }
+      .guide-card[data-map-summary="true"] { width: 310px; background: var(--observatory-surface); }
+      .guide-card[data-map-summary="true"] .guide-card__header { padding-top: 20px; }
+      .guide-card[data-map-summary="true"] .guide-card__name { font-size: 32px; }
+      .guide-card[data-map-summary="true"] .guide-card__text,
+      .guide-card[data-map-summary="true"] .guide-card__actions > :not([data-action="approach"]) { display: none; }
+      .guide-card[data-map-summary="true"] .guide-card__actions { margin-top: 16px; }
+      .guide-card[data-map-summary="true"] .object-evidence { margin-top: 8px; } .debug {
         position: absolute;
         z-index: 3;
-        left: 28px;
-        color: rgba(220, 233, 252, 0.72);
-        letter-spacing: 0;
-        text-shadow: 0 1px 12px rgba(0, 0, 0, 0.76);
+        left: max(30px, env(safe-area-inset-left));
         pointer-events: none;
-      }
-
-      .status {
-        bottom: 24px;
-        max-width: 360px;
-        font-size: 12px;
-        line-height: 1.5;
-        transition:
-          opacity 420ms ease,
-          transform 420ms ease;
-      }
-
-      .status[data-hidden="true"] {
-        opacity: 0;
-        transform: translateY(8px);
+        text-shadow: 0 1px 8px #03050a, 0 0 16px #03050a;
       }
 
       .debug {
-        top: 22px;
+        top: max(24px, env(safe-area-inset-top));
         display: none;
-        max-width: min(74vw, 1100px);
-        font: 11px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-        white-space: normal;
+        max-width: calc(100vw - 60px);
+        color: #b4b1ab;
+        font: 10px/1.8 "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+        white-space: pre-wrap;
         overflow-wrap: anywhere;
       }
 
-      .debug[data-enabled="true"] {
-        display: block;
+      .debug[data-enabled="true"] { display: block; }
+
+      button, summary, a { -webkit-tap-highlight-color: transparent; }
+      button { font: inherit; }
+      button:focus-visible, summary:focus-visible, a:focus-visible {
+        outline: 2px solid #e9d7ae;
+        outline-offset: 4px;
+      }
+      [hidden] { display: none !important; }
+
+      .controls { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+      .controls > * { pointer-events: auto; }
+      .observatory:not([data-state="ready"]) .controls,
+      .observatory:not([data-state="ready"]) .observation-console { visibility: hidden; }
+      .quiet-button {
+        min-height: 40px; padding: 0 14px; border: 1px solid #eee9df24; border-radius: 4px;
+        background: #070b13b8; color: #d7d2c9; cursor: pointer; font-size: 11px;
+        backdrop-filter: blur(14px); transition: background 180ms, border-color 180ms;
+      }
+      .quiet-button:hover { background: #17202deb; border-color: #eee9df60; }
+      .quiet-button:disabled { opacity: .45; cursor: default; }
+      .quiet-button[aria-expanded="true"] { border-color: #cfbb8b80; color: #f1dfb8; }
+      .guide-card {
+        position: absolute; left: 30px; bottom: 74px; width: min(340px, calc(100vw - 110px));
+        border-left: 1px solid #cfbb8b59;
+        background: linear-gradient(110deg, #050811e8, #070b14b5 72%, #070b1470);
+        box-shadow: 0 10px 40px #0003; backdrop-filter: blur(16px);
+      }
+      .guide-card__content { display: flex; flex-direction: column; max-height: var(--guide-space-height); }
+      .guide-card__header { flex: none; padding: 22px 24px 0; }
+      .guide-card__body { min-height: 0; padding: 0 24px 22px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+      .guide-card__body:focus-visible { outline: 1px solid #d4c6aa70; outline-offset: -2px; }
+      .guide-card__eyebrow { margin: 0 0 9px; padding-right: 40px; color: #b8b1a4; font-size: 10px; letter-spacing: .14em; }
+      .guide-card__hide { position: absolute; z-index: 1; top: 10px; right: 10px; min-width: 40px; padding: 0; border-color: transparent; background: #070b14dc; font-size: 20px; }
+      .guide-restore { position: absolute; left: 30px; bottom: 74px; }
+      .guide-card__name { margin: 0; font-family: "Iowan Old Style", "Songti SC", Georgia, serif; font-size: 30px; font-weight: 400; line-height: 1.15; }
+      .guide-card__type { margin: 9px 0 0; color: #d4c6aa; font-size: 10px; }
+      .galaxy-regions { margin-top: 14px; padding-top: 12px; border-top: 1px solid #d4c6aa20; }
+      .galaxy-regions h3 { margin: 0; color: #d4c6aa; font-size: 10px; font-weight: 400; letter-spacing: .09em; }
+      .galaxy-regions p { margin: 6px 0 10px; color: #939eae; font-size: 10px; line-height: 1.6; }
+      .galaxy-regions__choices { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+      .galaxy-regions__choices button { min-height: 36px; padding: 7px 10px; font-size: 11px; }
+      .galaxy-regions__choices [aria-pressed="true"] { border-color: #cdbb94aa; color: #f1dfb8; background: #cdbb9412; }
+      .galaxy-whole-control { position: absolute; left: 30px; bottom: 70px; z-index: 5; }
+      @media (max-width: 600px) { .galaxy-whole-control { left: 18px; bottom: 74px; } }
+      .space-context { margin-top: 13px; padding: 10px 0; border-block: 1px solid #d4c6aa20; }
+      .space-context p { margin: 0; line-height: 1.6; }
+      .space-context__heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: #9ca7b9; font-size: 9px; }
+      .space-context__heading a { display: inline-flex; align-items: center; min-height: 24px; padding-block: 3px; color: #c4baa7; text-decoration: none; }
+      .space-context__heading a:hover { color: #f1dfb8; text-decoration: underline; }
+      .space-context .space-context__path { margin-top: 4px; color: #d4d9e1; font-size: 11px; }
+      .space-context .space-context__reference { color: #b9c4d5; font-size: 10px; }
+      .space-context .space-context__simulation { margin-top: 4px; color: #93969f; font-size: 9px; }
+      .guide-card__space { position: absolute; left: 0; bottom: 0; width: 100%; height: var(--guide-space-height); visibility: hidden; pointer-events: none; }
+      .guide-tabs { display: flex; flex: none; gap: 18px; margin: 17px 22px 0; border-bottom: 1px solid #c2c9d220; }
+      .guide-tabs button { min-height: 40px; padding: 0 0 9px; color: #93a0b1; border: 0; border-bottom: 1px solid transparent; background: transparent; font: inherit; font-size: 12px; cursor: pointer; }
+      .guide-tabs button[aria-selected="true"] { color: #eddec1; border-bottom-color: #cdbb94; }
+      .guide-tabs button:hover { color: #f1e4cb; }
+      .guide-tabs button:focus-visible { outline: 2px solid #e9d3a4; outline-offset: 3px; }
+      .guide-panel__hint { margin: 14px 0 10px; color: #a7b2c0; font-size: 11px; line-height: 1.7; }
+      .related-search { width: 100%; height: 38px; padding: 0 10px; border: 1px solid #b5c5df35; border-radius: 5px; color: #eee7d9; background: #04080d66; font: inherit; font-size: 12px; }
+      .related-search:focus-visible { outline: 2px solid #e9d3a4; outline-offset: 2px; }
+      .body-relations { margin-top: 14px; color: #a2abb7; }
+      .body-relations[hidden] { display: none; }
+      .body-relations__group + .body-relations__group { margin-top: 16px; }
+      .body-relations__group h3 { margin: 0 0 7px; color: #9ca8b9; font-size: 10px; font-weight: 400; }
+      .body-relations__list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+      .body-relations button { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-width: 0; min-height: 42px; padding: 9px 10px; border: 1px solid #b1c2db24; border-radius: 4px; color: #e1dfd6; background: #a4b4ce07; text-align: left; cursor: pointer; font: inherit; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+      .body-relations button::after { content: "↗"; color: #a99b80; }
+      .body-relations button:hover { border-color: #b1c2db70; background: #b1c2db12; }
+      .body-relations button[aria-current="true"] { border-color: #cdbb9470; }
+      .body-relations button:focus-visible { outline: 2px solid #e9d3a4; outline-offset: 1px; }
+      .body-relations button:disabled { opacity: .45; cursor: default; }
+      .guide-card__text { margin: 13px 0 17px; color: #bcbcc0; font-size: 12px; line-height: 1.7; }
+      .guide-card__actions { display: flex; flex-wrap: wrap; gap: 9px; align-items: center; }
+      .next-observation { display: block; width: 100%; margin-top: 15px; padding: 11px 0 0; border: 0; border-top: 1px solid #d4c6aa27; background: transparent; text-align: left; color: #decaa1; cursor: pointer; }
+      .next-observation:hover { color: #f4e5c6; }
+      .next-observation__name { display: block; font-size: 11px; line-height: 1.5; }
+      .next-observation__reason { display: block; margin-top: 5px; color: #aeb0ba; font-size: 10px; line-height: 1.6; }
+      .approach-button {
+        min-height: 40px; padding: 0 17px; border: 1px solid #dbc6997a; border-radius: 3px;
+        color: #f4e5c6; background: #87714b25; cursor: pointer; font-size: 11px;
+      }
+      .approach-button:hover { background: #87714b55; }
+      .guide-card__detail { margin-top: 14px; color: #a9aaaf; font-size: 10px; line-height: 1.7; }
+      .guide-card__detail summary { width: fit-content; cursor: pointer; color: #b9b6b0; }
+      .guide-card__detail p { margin: 10px 0 7px; }
+      .guide-card__detail a { color: #d4c6aa; text-decoration-color: #d4c6aa66; text-underline-offset: 3px; }
+      .guide-card__detail a:not([hidden]) { display: block; margin-top: 6px; }
+      .guide-card__disclosure { color: #92949c; }
+      .destination-panel {
+        position: absolute; top: 76px; right: 30px; width: min(360px, calc(100vw - 60px));
+        padding: 18px; background: #070b14ef; border: 1px solid #eee9df25; border-radius: 5px;
+        box-shadow: 0 18px 60px #0007; backdrop-filter: blur(24px);
+        max-height: calc(100dvh - 160px); overflow-y: auto; overscroll-behavior: contain;
+      }
+      .destination-panel__heading { margin: 0 0 15px; color: #c1b9aa; font-size: 10px; font-weight: 400; letter-spacing: .1em; }
+      .destination-browse__heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+      .destination-browse__heading h2 { margin: 0; }
+      .destination-browse__heading button { min-height: 36px; padding: 0 10px; font-size: 10px; }
+      .destination-browse__heading h2 { flex: 1; }
+      .route-guide { display: block; max-width: 100%; margin-top: 12px; padding: 5px 0; border: 0; color: #c4b89c; background: transparent; text-align: left; font: inherit; font-size: 10px; line-height: 1.5; cursor: pointer; }
+      .route-guide:hover { color: #f1dfb8; }
+      .route-plan__name { margin: 15px 8px 8px; font: 23px 'Iowan Old Style', 'Songti SC', Georgia, serif; font-weight: 400; line-height: 1.3; }
+      .route-plan__context { margin: 8px; color: #adb5c3; font-size: 11px; line-height: 1.7; }
+      .route-plan__progress { margin: 12px 8px; color: #d5c59f; font-size: 11px; }
+      .route-plan__source { display: inline-block; margin: 3px 8px 10px; color: #b8b2a5; font-size: 10px; text-underline-offset: 3px; }
+      .route-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 4px; }
+      .route-actions .approach-button { flex: 1; }
+      .route-stops .destination[data-visited="true"] .destination__arrow { color: #b9d0bb; }
+      .route-step-number { color: #d5c59f; font-size: 11px; font-variant-numeric: tabular-nums; }
+      .route-stops .destination[aria-current="true"] { border-color: #d4c6aa66; background: #cfbb8b0c; }
+      @media (max-width: 360px) {
+        .destination-browse__heading { flex-wrap: wrap; gap: 8px; }
+        .destination-browse__heading h2 { flex-basis: 100%; }
+      }
+      .system-navigation__hint { margin: 0 8px 12px; color: #aaaeb9; font-size: 11px; line-height: 1.7; }
+      .system-navigation__overview { width: 100%; min-height: 48px; padding: 10px 12px; margin-bottom: 8px; text-align: left; border: 1px solid #d4c6aa55; color: #e1d6be; background: #cfbb8b0c; font: inherit; font-size: 12px; cursor: pointer; }
+      .system-navigation__overview:focus-visible { outline: 2px solid #d8c49a; outline-offset: 2px; }
+      .system-navigation .destination { min-height: 56px; }
+      .system-navigation .destination[data-nested="true"] { width: calc(100% - 26px); margin-left: 26px; border-left: 1px solid #b3c0d133; border-radius: 0; }
+      .destination-browse { position: sticky; top: -18px; z-index: 1; margin: -18px -18px 0; padding: 18px; background: #080c16; border-bottom: 1px solid #eee9df18; }
+      .destination-categories { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+      .destination-category { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 36px; padding: 7px 10px; border: 1px solid transparent; border-bottom-color: #eee9df25; background: transparent; color: #aaaab1; text-align: left; font: inherit; font-size: 11px; cursor: pointer; }
+      .destination-category span:last-child { color: #898d98; font-size: 10px; }
+      .destination-category[aria-pressed="true"] { color: #eee9df; background: #cfbb8b0c; border-bottom-color: #d4c6aa; }
+      .destination-category:hover, .destination-category:focus-visible { border-color: #d4c6aa66; outline: none; }
+      .destination-category:disabled { opacity: .5; cursor: default; }
+      .destination-result-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .destination-clear { flex-shrink: 0; min-height: 36px; padding: 8px; margin-top: 8px; border: 0; background: transparent; color: #d4c6aa; font: inherit; font-size: 10px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+      .destination-list { display: grid; gap: 4px; }
+      .destination-section { margin: 16px 8px 6px; color: #c1b9aa; font-size: 10px; font-weight: 400; letter-spacing: .08em; }
+      .destination-session-hint { margin: 6px 8px 8px; color: #92949c; font-size: 10px; line-height: 1.6; }
+      .destination-search { width: 100%; height: 42px; padding: 0 12px; margin: 0 0 12px; border: 1px solid #eee9df2d; border-radius: 3px; color: var(--ink); background: #ffffff05; font: inherit; font-size: 12px; }
+      .destination-search:focus-visible { outline: 1px solid #d8c49a; outline-offset: 2px; }
+      .destination-search::placeholder { color: #9b9ba5; }
+      .destination-search-hint, .destination-empty { margin: 10px 8px; color: #b3b0aa; font-size: 11px; line-height: 1.7; }
+      .destination {
+        display: grid; grid-template-columns: 22px 1fr 14px; gap: 10px; align-items: center; width: 100%;
+        min-height: 65px; padding: 11px 12px; border: 1px solid transparent; border-radius: 3px;
+        background: transparent; text-align: left; color: var(--ink); cursor: pointer;
+      }
+      .destination:hover, .destination:focus-visible { background: #ffffff08; border-color: #eee9df27; }
+      .destination[aria-current="true"] { background: #cfbb8b0c; }
+      .destination[data-body-kind="planet"] .destination__star, .destination[data-body-kind="dwarfplanet"] .destination__star, .destination[data-body-kind="moon"] .destination__star { box-shadow: none; position: relative; background: radial-gradient(circle at 30% 25%, #d9e4ef, var(--star-color) 45%, #172c4b); }
+      .destination[data-material="saturn"] .destination__star::after { content: ""; position: absolute; width: 19px; height: 6px; border: 1px solid #d3bd8a; border-radius: 50%; left: -5px; top: 1px; transform: rotate(-20deg); }
+      .destination[data-body-kind="nebula"] .destination__star { width: 14px; height: 10px; border-radius: 42% 58% 63% 37%; background: radial-gradient(ellipse at 38% 40%, #d8c4f6, #9a629e 38%, #e87c9d 60%, transparent 78%); box-shadow: 0 0 9px #d87a9b55; }
+      .destination[data-body-kind="galaxy"] .destination__star { width: 17px; height: 8px; transform: rotate(-25deg); border-radius: 50%; background: radial-gradient(ellipse, #fff3d1 5%, #d9b785 24%, #7298c3 56%, transparent 78%); box-shadow: 0 0 10px #d9b78544; }
+      .destination[data-body-kind="comet"] .destination__star { position: relative; width: 8px; height: 8px; background: #b6d8df; box-shadow: 0 0 8px #79bad866; }
+      .destination[data-body-kind="comet"] .destination__star::after { content: ""; position: absolute; width: 16px; height: 6px; right: 4px; top: 4px; transform: rotate(-32deg); transform-origin: right center; background: linear-gradient(to left, #87b6c9a0, transparent); border-radius: 100% 20% 20% 100%; }
+      .destination[data-body-kind="pulsar"] .destination__star { position: relative; width: 8px; height: 8px; background: #b4dcf6; box-shadow: 0 0 8px #84c7ee88; }
+      .destination[data-body-kind="pulsar"] .destination__star::after { content: ""; position: absolute; width: 3px; height: 26px; left: 2px; top: -9px; transform: rotate(-28deg); background: linear-gradient(transparent, #84c7eeaa 30%, #c9e9fc 50%, #84c7eeaa 70%, transparent); }
+      .destination[data-body-kind="blackhole"] .destination__star { width: 11px; height: 11px; background: #030509; border: 1px solid #edb366; box-shadow: 0 0 8px #e8ab6255; position: relative; }
+      .destination[data-body-kind="blackhole"] .destination__star::after { content: ""; position: absolute; width: 21px; height: 6px; left: -6px; top: 1px; border: 1px solid #d99242; border-radius: 50%; transform: rotate(-20deg); }
+      .destination__star { width: 10px; height: 10px; border-radius: 50%; background: var(--star-color); box-shadow: 0 0 12px var(--star-color); }
+      .destination__name { display: block; font-size: 13px; font-weight: 400; }
+      .destination__reason { display: block; margin-top: 5px; font-size: 10px; color: #aaaab1; line-height: 1.5; }
+      .destination__arrow { color: #b5a58a; }
+      .destination-panel__note { margin: 15px 8px 2px; color: #898d98; font-size: 9px; line-height: 1.6; }
+      .scene-motion { margin-top: 12px; border-bottom: 1px solid #eee9df18; }
+      .scene-motion summary { display: list-item; min-height: 40px; padding: 10px 8px; color: #c8c4b9; font-size: 11px; cursor: pointer; }
+      .scene-motion summary:focus-visible { outline: 1px solid #d8c49a; outline-offset: 2px; }
+      .scene-motion fieldset { display: flex; gap: 5px; margin: 2px 8px 0; padding: 0; border: 0; }
+      .scene-motion label { position: relative; flex: 1; min-height: 40px; padding: 11px 6px; border: 1px solid #eee9df2d; text-align: center; color: #aaaeb9; font-size: 11px; cursor: pointer; }
+      .scene-motion label input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: inherit; }
+      .scene-motion label:has(input:checked) { color: #eee4cc; border-color: #d4c6aa99; background: #cfbb8b0c; }
+      .scene-motion label:has(input:focus-visible) { outline: 2px solid #d8c49a; outline-offset: 2px; }
+      .scene-motion fieldset:disabled { opacity: .5; }
+      .scene-motion fieldset:disabled label { cursor: default; }
+      .scene-motion__status, .scene-motion__hint { margin: 9px 8px 12px; color: #c6b992; font-size: 10px; line-height: 1.7; }
+      .scene-motion__hint { color: #9298a7; }
+      .view-controls { display: flex; gap: 6px; pointer-events: none; }
+      .view-controls button { pointer-events: auto; min-width: 42px; padding: 0 12px; font-size: 19px; }
+      .view-controls svg { display: block; width: 18px; height: 18px; }
+      .capture-preview { width: min(960px, calc(100vw - 40px)); max-height: calc(100dvh - 32px); padding: 20px; overflow: auto; border: 1px solid #eee9df32; border-radius: 6px; color: var(--ink); background: #0b0f19; }
+      .capture-preview::backdrop { background: #02050bdd; }
+      .capture-preview__header, .capture-preview__actions { position: sticky; z-index: 1; padding: 12px 0; background: #0b0f19; display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+      .capture-preview__header { top: -1px; }
+      .capture-preview__actions { bottom: -1px; border-top: 1px solid #eee9df24; }
+      .capture-preview h2 { margin: 0; font-size: 14px; font-weight: 400; }
+      .capture-preview img { display: block; width: 100%; height: auto; object-fit: contain; margin: 16px 0; }
+      .capture-preview__hint { margin: 0; max-width: 440px; color: #adb1bb; font-size: 11px; line-height: 1.7; }
+      .capture-preview__actions a { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; text-decoration: none; }
+      .debug { top: 180px; }
+
+      @media (max-width: 700px) {
+        .guide-card { left: 22px; width: min(330px, calc(100vw - 100px)); }
+        .guide-card__content { max-height: var(--guide-space-height); }
+        .guide-card__header { padding: 18px 20px 0; }
+        .guide-card__body { padding: 0 20px 18px; }
+        .guide-restore { left: 22px; }
+        .guide-card__name { font-size: 27px; }
+        .guide-card__text { margin: 11px 0 14px; font-size: 11px; }
+        .destination-panel { right: 20px; top: 70px; width: min(360px, calc(100vw - 40px)); }
+      }
+      @media (max-width: 420px) {
+        .guide-card { width: calc(100vw - 90px); }
+        .guide-card__header { padding: 16px 16px 0; }
+        .guide-card__body { padding: 0 16px 16px; }
+        .guide-card__name { font-size: 24px; }
+        .capture-preview { padding: 14px; }
+        .capture-preview__actions { align-items: stretch; flex-direction: column; }
+      }
+      @media (max-width: 700px) and (max-height: 700px) {
+        .guide-card[data-view="system"] .guide-card__text,
+        .guide-card[data-view="system"] .space-context__path,
+        .guide-card[data-view="system"] .space-context__simulation { display: none; }
+        .guide-card[data-view="system"] .guide-card__actions { margin-top: 14px; }
+        .guide-card[data-view="system"] .space-context { margin-top: 10px; padding: 4px 0; }
+      }
+      .view-controls .quality-toggle, .view-controls .dynamics-toggle { width: auto; min-width: 44px; padding-inline: 12px; font-size: 12px; }
+      .view-controls .dynamics-toggle[data-paused="true"] { color: #e2c799; border-color: #d4c6aa77; }
+      @media (max-height: 500px) {
+        .guide-card__content { max-height: var(--guide-space-height); }
+        .guide-card__header { padding: 8px 16px 0; }
+        .guide-card__body { padding: 0 16px 8px; display: flex; flex-direction: column; }
+        .guide-card__body > * { flex-shrink: 0; }
+        .guide-card__text, .space-context, .next-observation, .guide-card__detail { order: 1; }
+        .guide-card__body:focus-visible { outline: 1px solid #d4c6aa70; outline-offset: -2px; }
+      .guide-card__eyebrow { margin-bottom: 6px; }
+        .guide-card__name { font-size: 24px; }
+        .guide-card__type { margin-top: 6px; }
+        .guide-card__text { margin: 8px 0; font-size: 11px; line-height: 1.55; }
+        .destination-panel { max-height: calc(100dvh - 150px); }
+        .destination-browse { padding-top: 8px; padding-bottom: 8px; }
+        .destination-panel__heading { margin-bottom: 8px; }
+        .destination-browse__heading { margin-bottom: 4px; }
+        .destination-browse__heading button { min-height: 32px; }
+        .destination-search { height:36px; margin-bottom:0; }
+        .destination-category { min-height: 32px; padding-block: 5px; }
+      }
+      @media (min-width: 700px) and (max-height: 500px) {
+        .destination-panel { width: min(680px, calc(100vw - 60px)); }
+        .destination-categories { display: flex; overflow-x: auto; }
+        .destination-category { flex: 1 0 auto; gap: 5px; padding-inline: 6px; white-space: nowrap; }
+      }
+      @media (max-height: 360px) {
+        .destination-browse { position: static; }
+      }
+      .quality-panel { width: min(420px, calc(100vw - 44px)); max-height: calc(100dvh - 48px); overflow: auto; margin: auto; padding: 26px; color: #e3e8ef; border: 1px solid #bfb29944; background: #080c17f5; box-shadow: 0 25px 100px #0009; pointer-events: auto; }
+      .quality-panel::backdrop { background: #01030a99; }
+      .quality-panel__header { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+      .quality-panel__header h2 { margin: 0; font: 26px 'Iowan Old Style', 'Songti SC', Georgia, serif; font-weight: 400; }
+      .quality-panel__header button { width: 40px; height: 40px; padding: 0; }
+      .quality-panel__hint { margin: 18px 0 22px; color: #a1a9b8; font-size: 12px; line-height: 1.8; }
+      .quality-panel fieldset { margin: 0; padding: 0; border: 0; display: grid; gap: 10px; }
+      .quality-option { display: flex; gap: 14px; align-items: center; padding: 16px; border: 1px solid #9aa6bd26; cursor: pointer; transition: border-color .16s; }
+      .quality-option:has(input:checked) { border-color: #d7bd7a99; background: #d7bd7a09; }
+      .quality-option:has(input:focus-visible) { outline: 2px solid #e9d3a4; outline-offset: 3px; }
+      .quality-option input { margin: 0; accent-color: #d7bd7a; flex: none; }
+      .quality-option strong { display: block; font-size: 14px; font-weight: 400; }
+      .quality-option small { display: block; margin-top: 5px; color: #9ba6b9; line-height: 1.6; font-size: 11px; }
+      .quality-panel fieldset:disabled { opacity: .6; }
+      .quality-panel__feedback { margin: 18px 0 0; min-height: 18px; color: #c2b48f; font-size: 11px; line-height: 1.7; }
+      @media (prefers-reduced-motion: reduce) {
+        .quiet-button { transition: none; }
       }
 
       .unsupported {
@@ -182,85 +386,566 @@
         display: none;
         place-items: center;
         padding: 32px;
-        background: rgba(1, 4, 10, 0.94);
-        color: rgba(230, 240, 255, 0.82);
+        background: #03050af5;
+        color: var(--ink);
         text-align: center;
         font-size: 14px;
-        line-height: 1.7;
+        line-height: 1.8;
       }
 
-      .unsupported[data-visible="true"] {
-        display: grid;
+      .unsupported[data-visible="true"] { display: grid; }
+      .unsupported__text { max-width: 430px; }
+
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+        border: 0;
       }
 
-      @media (max-width: 980px) {
-        body {
-          min-width: 0;
-        }
+      @media (max-width: 600px) { .debug { left: 20px; }
+      }
 
-        .scale-axis {
-          right: 16px;
-          height: 230px;
-        }
+      @media (prefers-reduced-motion: reduce) { .quality-option { transition: none; }
+      }
+      [data-testid="open-destinations"] { background: #ddd1b7; color: #171c24; border-color: #f3e9d0aa; }
+      [data-testid="open-destinations"]:hover { background: #f1e4c7; color: #111620; }
+      .guide-card { --console-clearance: calc(48px + var(--observation-console-height, 88px)); --guide-space-height: min(640px, calc(100dvh - var(--console-clearance) - var(--observation-clearance, 152px))); left: 32px; bottom: var(--console-clearance); width: min(330px, calc(100vw - 120px)); border: 1px solid #b5c5df20; border-top-color: #d5c5a44d; border-radius: 10px; background: var(--observatory-surface); box-shadow: 0 18px 50px #0003; backdrop-filter: blur(10px); }
+      .guide-card__content { max-height: var(--guide-space-height); }
+      .guide-card__header { padding: 23px 22px 0; }
+      .guide-card__body { padding: 0 22px 20px; scrollbar-color: #b7c0d13d transparent; }
+      .guide-card__eyebrow { color: #94a3b9; font-size: 10px; letter-spacing: .13em; }
+      .guide-card__name { font-size: 34px; line-height: 1.2; color: #f4eddf; overflow-wrap: anywhere; }
+      .guide-card__type { font-size: 11px; line-height: 1.6; color: #cdbf9f; }
+      .object-evidence { margin: 10px 0 0; color: #95b8b4; font-size: 9px; letter-spacing: .12em; }
+      .object-evidence::before { content: ""; display: inline-block; width: 4px; height: 4px; margin: 0 6px 2px 0; background: #95b8b4; border-radius: 50%; }
+      .guide-card__hide { top: 9px; right: 9px; background: transparent; border-radius: 50%; color: #aeb8c8; }
+      .guide-card__text { margin: 17px 0; font-size: 13px; line-height: 1.8; color: #c3cbd6; }
+      .guide-card__actions { gap: 8px; }
+      .guide-card__actions [data-testid="zoom-in"] { color: #f0e1bf; border-color: #dbc69960; background: #87714b25; }
+      .guide-card[data-guide-mode="read"], .guide-card[data-guide-mode="related"] { background: #080e16ed; }
+      .guide-card[data-guide-mode="observe"] .next-observation__reason { max-width: 30ch; }
+      .guide-card__detail[open] summary { color: #d7c9ab; }
+      .guide-card[data-guide-mode="read"] .space-context { margin-top: 16px; }
+      .guide-card [data-testid="guide-observe-terrain"] { margin-top: 12px; }
+      .approach-button { min-height: 44px; font-size: 12px; border-radius: 6px; }
+      .guide-card .quiet-button { font-size: 12px; }
+      .guide-card__detail { font-size: 12px; line-height: 1.8; }
+      .space-context__heading, .space-context .space-context__simulation { font-size: 10px; }
+      .space-context .space-context__reference, .next-observation__reason, .galaxy-regions p { font-size: 11px; }
+      .space-context .space-context__path, .next-observation__name, .galaxy-regions h3 { font-size: 12px; }
+      .guide-restore { left: 32px; bottom: calc(48px + var(--observation-console-height, 88px)); }
+      .galaxy-whole-control { left: 32px; bottom: calc(98px + var(--observation-console-height, 88px)); }
+      .destination-panel { display:flex; flex-direction:column; overflow:hidden; top: 86px; right: 32px; width: min(464px, calc(100vw - 64px)); padding: 0; max-height: calc(100dvh - 192px); border-radius: 16px; background: var(--observatory-surface); border-color: #c4d2e533; box-shadow: 0 24px 100px #0009; scrollbar-color: #b7c0d13d transparent; }
+      .destination-browse { position:static; flex-shrink:0; margin:0; padding:18px 22px 14px; border-bottom-color:#c4d2e520; background:#0b1422; }
+      .destination-query { display:flex; gap:8px; align-items:stretch; }
+      .destination-query .destination-search { min-width:0; flex:1; width:0; margin:0; }
+      .destination-query .quiet-button { flex:none; min-height:0; padding:0 10px; border-radius:8px; font-size:11px; color:#bdc8d9; }
+      .destination-content { min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:14px 22px 18px; scrollbar-color:#b7c0d13d transparent; }
+      .destination-browse__heading { position:relative; flex-wrap:wrap; gap:6px; margin-bottom:12px; padding-right:38px; }
+      .destination-browse__heading h2 { flex:1 1 auto; font-family: 'Iowan Old Style', 'Songti SC', Georgia, serif; font-size: 27px; letter-spacing: 0; color: #ede3d0; }
+      .destination-browse__heading .quiet-button { min-height: 34px; padding: 0 10px; border-color: transparent; background: transparent; color: #aab8ca; font-size: 11px; }
+      .destination-browse__heading .explorer-close { position:absolute; right:-8px; top:0; min-width:38px; font-size:24px; border-radius:50%; }
+      .destination-browse__heading .quiet-button:hover { background: #c4d2e510; color: #f1e2c6; }
+      .destination-search { margin-bottom:0; height:46px; border-radius: 8px; background: #ffffff05; border-color: #c4d2e52e; font-size: 13px; padding-inline: 14px; }
+      .destination-regions { display: flex; padding: 4px; gap: 3px; border: 1px solid #c4d2e524; border-radius: 8px; margin-bottom: 12px; }
+      .destination-region { flex: 1; min-height: 36px; padding: 5px; border: 0; border-radius: 5px; color: #9caabe; background: transparent; font-size: 12px; cursor: pointer; }
+      .destination-region[aria-pressed="true"] { background: #b2c8df1c; color: #f3e6cc; box-shadow: inset 0 0 0 1px #c6d6e521; }
+      .destination-region:hover { color: #f3e6cc; }
+      .destination-categories { display: flex; gap: 5px; padding-bottom: 10px; border-bottom:1px solid #c4d2e520; overflow-x: auto; scrollbar-width: thin; scrollbar-color: #9fabc22e transparent; }
+      .destination-category { flex: none; gap: 7px; min-height: 35px; padding: 6px 10px; border: 1px solid #c4d2e518; border-radius: 18px; white-space: nowrap; font-size: 11px; }
+      .destination-category[aria-pressed="true"] { background: #d9c69c18; border-color: #d9c69c70; color: #e9d8b5; }
+      .destination-category span:last-child { color: #8291a7; }
+      .destination-section { margin-block:10px 7px; font-size: 11px; color: #cfbd9a; }
+      .destination { min-height: 76px; border-bottom: 1px solid #c4d2e516; border-radius: 7px; padding: 14px 12px; grid-template-columns: 25px 1fr 16px; }
+      .destination__name { font-size: 15px; color: #e6e9ee; }
+      .destination__reason { margin-top: 6px; font-size: 11px; color: #97a8bf; line-height: 1.65; }
+      .destination-panel__note { font-size: 10px; color: #8e9db2; }
+      .view-controls { position: static; left: auto; right: auto; bottom: auto; transform: none; width: auto; max-width: 100%; padding: 0 0 0 16px; gap: 2px; flex-wrap: nowrap; justify-content: center; border: 0; border-left: 1px solid #b5c5df25; border-radius: 0; background: transparent; backdrop-filter: none; box-shadow: none; }
+      .view-controls .quiet-button { min-height: 42px; min-width: 42px; padding: 0 13px; border: 0; border-radius: 6px; background: transparent; backdrop-filter: none; font-size: 12px; color: #c0ccdc; }
+      .view-controls .quiet-button:hover, .view-controls .quiet-button[aria-pressed="true"] { background: #b4c7e21c; color: #f4e6c7; }
+      .observatory[data-explorer="true"] .guide-card, .observatory[data-explorer="true"] .guide-restore, .observatory[data-explorer="true"] .observation-console { visibility: hidden; }
+      @media (max-width: 700px) {
+        .guide-card { --console-clearance: calc(36px + var(--observation-console-height, 126px)); --guide-space-height: min(31dvh, calc(100dvh - var(--console-clearance) - var(--observation-clearance, 152px))); left: 16px; bottom: var(--console-clearance); width: calc(100vw - 32px); border-radius: 12px; }
+        .guide-card__content { max-height: var(--guide-space-height); }
+        .guide-card__header { padding: 16px 18px 0; }
+        .guide-tabs { margin: 12px 18px 0; gap: 18px; }
+        .guide-card__body { padding: 0 18px 18px; }
+        .guide-card__name { font-size: 28px; }
+        .guide-card__text { font-size: 12px; line-height: 1.75; margin-block: 13px; }
+        .guide-card__type { font-size: 10px; }
+        .object-evidence { margin-top: 7px; font-size: 9px; }
+        .guide-card__eyebrow { font-size: 9px; }
+        .guide-restore { left: 16px; bottom: calc(36px + var(--observation-console-height, 126px)); }
+        .galaxy-whole-control { left: 16px; bottom: calc(86px + var(--observation-console-height, 126px)); }
+        .destination-panel { top: 82px; right: 12px; width: calc(100vw - 24px); max-height: calc(100dvh - 172px); padding:0; border-radius:14px; }
+        .destination-browse { margin:0; padding:16px 18px 12px; }
+        .destination-content { padding:12px 18px 16px; }
+        .destination-browse__heading { margin-bottom: 12px; }
+        .destination-browse__heading h2 { flex:1 0 100%; font-size:25px; }
+        .destination-search { height:42px; margin-bottom:0; }
+        .destination-regions { margin-bottom: 10px; }
+        .destination-region { min-height: 34px; font-size: 11px; }
+        .destination { min-height: 74px; }
+        .destination__name { font-size: 14px; }
+        .observation-console { left: 16px; right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); width: calc(100vw - 32px); padding: 10px; grid-template-columns: minmax(0, 1fr); gap: 7px; }
+        .scale-axis__tick { min-height: 34px; padding: 4px; font-size: 10px; }
+        .scale-axis__body { grid-template-rows: auto 18px; gap: 0; }
+        .scale-axis__full { display: none; }
+        .scale-axis__short { display: inline; }
+        .view-controls { padding: 6px 0 0; border-left: 0; border-top: 1px solid #b5c5df25; flex-wrap: wrap; }
+        .view-controls .quiet-button { min-height: 36px; }
+        .view-controls .quiet-button { padding: 0 10px; min-width: 36px; }
+      }
+      @media (max-width: 700px) {
+        .guide-card[data-map-summary="true"] { width: calc(100vw - 32px); }
+        .guide-card[data-map-summary="true"] .guide-card__name { font-size: 26px; }
+        .guide-card[data-map-summary="true"] .guide-card__header { padding-top: 16px; }
+      }
+      @media (max-width: 700px) and (min-height: 501px) and (max-height: 700px) {
+        .guide-card { --guide-space-height: min(28dvh, calc(100dvh - var(--console-clearance) - var(--observation-clearance, 152px) - 88px)); }
+        .guide-card__header, .guide-card[data-map-summary="true"] .guide-card__header { padding: 12px 14px 0; }
+        .guide-card__eyebrow, .guide-card__type, .object-evidence { display: none; }
+        .guide-card__name, .guide-card[data-map-summary="true"] .guide-card__name { font-size: 24px; padding-right: 24px; }
+        .guide-tabs { margin: 8px 14px 0; }
+        .guide-tabs button { min-height: 32px; padding-bottom: 5px; }
+        .guide-card__body { padding: 0 14px 12px; }
+        .guide-card__hide { min-width: 32px; min-height: 32px; top: 5px; right: 5px; }
+      }
+      @media (max-width: 360px) {
+        .view-controls { flex-wrap: nowrap; gap: 0; }
+        .view-controls .quiet-button { min-width: 30px; padding-inline: 6px; font-size: 11px; }
+        .view-controls .quality-toggle, .view-controls .dynamics-toggle { padding-inline: 4px; font-size: 10px; }
+      }
+      @media (max-height: 500px) {
+        .guide-card[data-map-summary="true"] .guide-card__header { padding-top: 8px; }
+        .guide-card[data-map-summary="true"] .guide-card__eyebrow,
+        .guide-card[data-map-summary="true"] .guide-card__type { display: none; }
+        .guide-card[data-map-summary="true"] .guide-card__name { font-size: 20px; }
+        .guide-card[data-map-summary="true"] .guide-card__body { flex-shrink: 0; }
+        .guide-card[data-map-summary="true"] .guide-card__actions { margin-top: 8px; }
+        .guide-card[data-map-summary="true"] .guide-card__actions button { min-width: 0; padding-inline: 8px; font-size: 11px; }
+        .observation-console { bottom: 12px; padding-block: 7px; }
+        .scale-axis__tick { min-height: 32px; padding-block: 3px; }
+        .scale-axis__full { display: none; }
+        .scale-axis__short { display: inline; }
+        .guide-card { --console-clearance: calc(36px + var(--observation-console-height, 72px)); --guide-space-height: calc(100dvh - var(--console-clearance) - var(--observation-clearance, 130px)); left: 18px; bottom: var(--console-clearance); width: min(330px, calc(100vw - 100px)); }
+        .guide-card__content { max-height: var(--guide-space-height); }
+        .guide-card__header { padding: 8px 18px 0; }
+        .guide-card__eyebrow, .guide-card__type { display: none; }
+        .guide-tabs { margin: 6px 18px 0; gap: 20px; }
+        .guide-tabs button { min-height: 32px; padding-bottom: 5px; font-size: 11px; }
+        .guide-card[data-guide-mode="observe"] .guide-card__text,
+        .guide-card[data-guide-mode="observe"] .next-observation { display: none; }
+        .guide-card__actions { margin-top: 9px; }
+        .guide-card__actions button { min-height: 36px; }
+        .guide-panel__hint { margin-top: 10px; }
+        .body-relations__list { grid-template-columns: 1fr; }
+        .guide-card__body { display: block; }
+        .guide-card__body { padding: 0 18px 12px; }
+        .guide-card__name { font-size: 25px; padding-right: 18px; }
+        .guide-card__hide { min-width: 28px; min-height: 28px; top: 6px; right: 6px; }
+        .object-evidence { display: none; }
+        .destination-panel { top: 12px; right: 12px; width: min(520px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); padding:0; }
+        .destination-browse { margin:0; padding:12px 14px 6px; }
+        .destination-content { padding:4px 14px 12px; }
+        .destination-browse__heading { flex-wrap: nowrap; gap: 4px; margin-bottom: 8px; }
+        .destination-browse__heading h2 { flex:1 1 auto; font-size:22px; }
+        .destination-browse__heading .explorer-close { order: 5; }
+        .destination-search { height:36px; margin-bottom:0; }
+        .destination-regions { margin-bottom: 6px; padding: 2px; }
+        .destination-region, .destination-category { min-height: 32px; padding-block: 4px; }
+      }
 
-        .scale-axis__tick::after {
-          display: none;
-        }
+      .destination-view-filter { display:flex; gap:4px; margin:12px 0 8px; padding:3px; border:1px solid #e5dcc322; border-radius:9px; }
+      .destination-view-filter button { flex:1; min-height:36px; border:0; border-radius:6px; color:#a6b0bd; background:transparent; font:inherit; font-size:11px; cursor:pointer; }
+      .destination-view-filter button[aria-pressed="true"] { color:#f0e4ca; background:#d8c49a18; }
+      .destination-view-filter button:focus-visible { outline:1px solid #d8c49a; outline-offset:2px; }
+      .destination-view-hint { margin:0 8px 8px; color:#8794a4; font-size:10px; line-height:1.6; }
+      .destination__direction { display:block; margin-top:6px; color:#8e9bac; font-size:10px; letter-spacing:.02em; }
+      .destination[data-direction="visible"] .destination__direction { color:#c1cbb7; }
+      .destination[data-direction="visible"] .destination__star { outline:1px solid #d8c49a55; outline-offset:5px; }
+      .destination > span:nth-child(2) { min-width:0; }
+      .destination-result-heading .destination-clear { margin-top:0; }
+      .destination-row { display:grid;grid-template-columns:minmax(0,1fr) 60px;align-items:stretch;border-bottom:1px solid #c4d2e516; }
+      .destination-row .destination { border-bottom:0; }
+      .destination-locate { align-self:center;min-height:44px;padding:6px 2px;border:0;border-left:1px solid #c4d2e522;background:transparent;color:#b8aa8b;font-size:11px;cursor:pointer; }
+      .destination-locate:hover,.destination-locate:focus-visible { background:#d7c9ab14;color:#eee0c2; }
+      .destination-row:has(:focus-visible),.destination-row:hover { background:#d7c9ab08; }
+      .destination-peek { position:absolute;z-index:6;left:16px;top:120px;width:min(620px,calc(100vw - 32px));padding:14px 18px;border:1px solid #8c857363;border-radius:10px;background:#080e16f5;box-shadow:0 8px 30px #0005;pointer-events:auto;display:flex;align-items:center;gap:18px; }
+      .destination-peek__subject { min-width:0;flex:1; }
+      .destination-peek__name { margin:0;color:#ede4ce;font-size:16px;font-weight:400; }
+      .destination-peek__direction { min-height:1.4em;line-height:1.4;margin:5px 0 0;font-size:11px;color:#aab6c6; }
+      .destination-peek__actions { display:flex;gap:8px;flex-shrink:0; }
+      .observatory[data-locating="true"] .guide-card,.observatory[data-locating="true"] .guide-restore { visibility:hidden; }
+      @media(max-width:700px) { .destination-peek { flex-wrap:wrap;gap:10px;padding:12px 14px; } .destination-peek__subject { flex-basis:100%; } .destination-peek__actions { width:100%; } .destination-peek__actions button { flex:1; } }
+      .destination--catalog { min-height:72px; padding-block:10px; }
+      .destination--catalog .destination__reason { margin-top:4px; font-size:12px; line-height:1.5; }
+      .destination--catalog .destination__direction { margin-top:4px; }
+      .destination__reason { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+      @media (max-height:500px) {
+        .destination-view-hint { display:none; }
+        .destination-view-filter { margin:10px 0 6px; }
+        .destination-view-filter button { min-height:32px; }
+        .destination__reason { -webkit-line-clamp:1; }
+      }
 
-        .status,
-        .debug {
-          left: 18px;
-        }
+      /* The held view and its controls share one quiet observation frame. */
+      .observatory-masthead {
+        position:absolute;top:max(24px,env(safe-area-inset-top));left:max(32px,env(safe-area-inset-left));right:max(32px,env(safe-area-inset-right));
+        display:grid;grid-template-columns:128px minmax(0,1fr) auto;column-gap:26px;row-gap:4px;align-items:start;
+        padding:12px 18px 9px;border:1px solid #b5c5df20;border-bottom-color:#d5c5a44d;border-radius:10px;
+        background:var(--observatory-surface);backdrop-filter:blur(16px);box-shadow:0 8px 32px #0003;
+      }
+      .identity { padding-top:4px; }
+      .identity__name { margin:0;color:#eee9df;font-size:13px;font-weight:500;letter-spacing:.24em; }
+      .identity__caption { margin:8px 0 0;color:#99a8bb;font-size:9px;letter-spacing:.1em; }
+      .observation-hud { position:static;min-width:0;pointer-events:none;text-shadow:none; }
+      .observation-context { display:grid;grid-template-columns:minmax(100px,.8fr) minmax(0,1.4fr);align-items:center;gap:18px;min-height:40px;visibility:hidden; }
+      .observatory[data-state="ready"] .observation-context { visibility:visible; }
+      .position-readout { display:flex;align-items:baseline;flex-wrap:wrap;gap:3px 12px;margin:0;line-height:1.5; }
+      .position-readout__scale,.position-readout__region { color:#a9b6c6;font-size:10px; }
+      .position-readout__scale { letter-spacing:.06em; }
+      .position-readout__body { color:#eee8db;font:400 21px/1.3 'Iowan Old Style','Songti SC',Georgia,serif;overflow-wrap:anywhere; }
+      .position-readout__region { flex-basis:100%; }
+      .navigation-state { display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;min-height:34px;margin-top:0; }
+      .navigation-feedback { margin:0;color:#d9c9a5;font-size:11px;line-height:1.55; }
+      .journey-controls { grid-column:2;pointer-events:auto; }
+      .journey-controls .quiet-button { min-height:32px;padding:4px 10px;border-color:#d6bd7c55;background:#d6bd7c12;color:#ebd9b4;font-size:11px;white-space:nowrap; }
+      .toolbar { position:static;display:flex;gap:6px;padding-top:1px; }
+      .toolbar .quiet-button { min-height:40px;padding-inline:14px;border-radius:6px;font-size:11px;background:transparent;backdrop-filter:none; }
+      .toolbar [data-testid="open-destinations"] { background:#ddd1b7;color:#171c24;border-color:#f3e9d0aa; }
+      .toolbar [data-testid="open-destinations"]:hover,.toolbar [data-testid="open-destinations"][aria-expanded="true"] { background:#f1e4c7;color:#171c24; }
+      .masthead-action__compact { display:none; }
+      .observatory-masthead__notes { position:relative;grid-column:1/-1;min-height:27px;padding-top:7px;border-top:1px solid #b5c5df18; }
+      .space-map-hint { width:57%;margin:0;color:#8494aa;font-size:9px;line-height:1.5; }
+      .status { position:absolute;top:7px;right:0;width:41%;margin:0;color:#b7c2d1;font-size:10px;line-height:1.5;text-align:right;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden; }
+      .status[data-hidden="true"] { visibility:hidden; }
+      .observatory[data-navigation="flying"] .status[data-kind="hint"],
+      .observatory[data-navigation="paused"] .status[data-kind="hint"],
+      .observatory[data-navigation="returning"] .status[data-kind="hint"],
+      .observatory[data-navigation="zooming"] .status[data-kind="hint"] { visibility:hidden; }
+      .observatory[data-explorer="true"] .observation-context,.observatory[data-explorer="true"] .observatory-masthead__notes { visibility:hidden; }
+      .observatory:not([data-state="ready"]) .observatory-masthead { visibility:visible; }
+      .observatory:not([data-state="ready"]) .toolbar,.observatory:not([data-state="ready"]) .space-map-hint { visibility:hidden; }
+      @media(max-width:1000px) {
+        .observatory-masthead { grid-template-columns:1fr auto;column-gap:12px;row-gap:7px; }
+        .identity { grid-column:1;grid-row:1; }
+        .toolbar { grid-column:2;grid-row:1; }
+        .observation-hud { grid-column:1/-1;grid-row:2; }
+        .position-readout__body { font-size:20px; }
+        .observation-context { grid-template-columns:minmax(100px,.8fr) minmax(0,1.4fr); }
+      }
+      @media(max-width:700px) {
+        .observatory-masthead { top:max(14px,env(safe-area-inset-top));left:max(16px,env(safe-area-inset-left));right:max(16px,env(safe-area-inset-right));padding:10px 12px 8px;row-gap:5px;column-gap:6px; }
+        .identity { padding-top:9px; }
+        .identity__name { font-size:11px;letter-spacing:.17em; }
+        .identity__caption { display:none; }
+        .toolbar { gap:3px;padding-top:0; }
+        .toolbar .quiet-button { min-height:36px;min-width:36px;padding-inline:8px;font-size:10px; }
+        .masthead-action__full { display:none; }
+        .masthead-action__compact { display:inline; }
+        .position-readout { gap:2px 9px; }
+        .observation-context { grid-template-columns:minmax(82px,.75fr) minmax(0,1.4fr);gap:9px; }
+        .observation-context:has(.navigation-feedback[hidden]) { grid-template-columns:minmax(0,1fr); }
+        .navigation-state:has(.navigation-feedback[hidden]) { display:none; }
+        .position-readout__body { font-size:18px; }
+        .position-readout__scale,.position-readout__region { font-size:9px; }
+        .navigation-state { min-height:32px;margin-top:0;gap:6px; }
+        .navigation-feedback { font-size:10px; }
+        .journey-controls .quiet-button { padding-inline:8px;font-size:10px; }
+        .observatory-masthead__notes { min-height:43px;padding-top:6px; }
+        .space-map-hint { font-size:8px;line-height:1.5; }
+        .status { top:6px;font-size:9px;-webkit-line-clamp:3; }
+      }
+      @media(max-width:700px) and (min-height:501px) and (max-height:700px) {
+        .observatory-masthead { padding:8px 10px 6px;row-gap:3px; }
+        .identity { padding-top:7px; }
+        .toolbar .quiet-button { min-height:32px;padding-inline:7px; }
+        .observation-context { min-height:32px; }
+        .observatory-masthead__notes { min-height:34px;padding-top:5px; }
+        .space-map-hint { font-size:9px;line-height:1.45; }
+        .status { top:5px;-webkit-line-clamp:2; }
+      }
+      @media(max-height:500px) {
+        .observatory-masthead { top:12px;left:18px;right:18px;padding:8px 12px 6px;row-gap:3px; }
+        .identity__caption { display:none; }
+        .position-readout__body { font-size:17px; }
+        .navigation-state { min-height:32px;margin-top:0; }
+        .toolbar .quiet-button { min-height:34px;padding-inline:10px; }
+        .observatory-masthead__notes { min-height:26px;padding-top:4px; }
+        .space-map-hint { font-size:8px; }
+        .status { top:4px;font-size:9px; }
+      }
+      @media(min-width:701px) and (max-height:500px) {
+        .observatory-masthead { grid-template-columns:95px minmax(0,1fr) auto;column-gap:16px; }
+        .identity,.toolbar,.observation-hud { grid-row:1; }
+        .identity { grid-column:1; }
+        .observation-hud { grid-column:2; }
+        .toolbar { grid-column:3; }
+        .masthead-action__full { display:none; }
+        .masthead-action__compact { display:inline; }
       }
     </style>
   </head>
   <body>
-    <main class="observatory" id="observatory">
-      <canvas class="scene-canvas" id="scene" aria-label="Scalable galactic star map"></canvas>
+    <main class="observatory" id="observatory" data-state="loading">
+      <canvas class="scene-canvas" id="scene" data-testid="star-map" role="application" tabindex="0"
+        aria-label="Interactive cosmic observatory" aria-describedby="interaction-guide"
+        aria-keyshortcuts="+ - ArrowUp ArrowDown ArrowLeft ArrowRight Home Escape" aria-busy="true"></canvas>
       <canvas class="label-canvas" id="labels" aria-hidden="true"></canvas>
-      <div class="scale-axis" id="scale-axis" aria-hidden="true">
-        <span class="scale-axis__tick" data-level="surface" data-label="Surface" style="--tick-progress: 0.89"></span>
-        <span class="scale-axis__tick" data-level="system" data-label="System" style="--tick-progress: 0.68"></span>
-        <span class="scale-axis__tick" data-level="local" data-label="Local" style="--tick-progress: 0.51"></span>
-        <span class="scale-axis__tick" data-level="regional" data-label="Regional" style="--tick-progress: 0.31"></span>
-        <span class="scale-axis__tick" data-level="galactic" data-label="Galactic" style="--tick-progress: 0.09"></span>
-        <span class="scale-axis__dot"></span>
+      <div class="controls" id="controls">
+        <header class="observatory-masthead" data-testid="observatory-masthead">
+          <div class="identity" data-testid="observatory-identity"><p class="identity__name">UNIVERSE</p><p class="identity__caption" data-copy="observatory"></p></div>
+          <aside class="observation-hud" data-testid="observation-hud" data-copy-label="observationContext">
+            <div class="observation-context" data-testid="observation-context">
+              <p class="position-readout" data-field="position" data-testid="position-readout"><span class="position-readout__scale" data-field="position-scale"></span><span class="sr-only" data-field="position-relation"></span><strong class="position-readout__body" data-field="position-body"></strong><span class="position-readout__region" data-field="position-region" hidden></span></p>
+              <div class="navigation-state">
+                <p class="navigation-feedback" data-field="navigation-feedback" data-testid="navigation-feedback" role="status" aria-live="polite" aria-atomic="true" hidden></p>
+                <div class="journey-controls"><button class="quiet-button" type="button" data-action="stop" data-testid="stop-flight" data-copy="stop" hidden></button><button class="quiet-button" type="button" data-action="resume" data-testid="resume-flight" hidden></button></div>
+              </div>
+            </div>
+          </aside>
+          <nav class="toolbar" data-testid="observatory-navigation" data-copy-label="navigation">
+            <button class="quiet-button" type="button" data-action="overview" data-testid="return-overview" data-copy-label="overview"><span class="masthead-action__full" data-copy="overview"></span><span class="masthead-action__compact" data-copy="overviewCompact" aria-hidden="true"></span></button>
+            <button class="quiet-button" type="button" data-action="space-overview" data-testid="space-overview" data-copy-label="wideOverview"><span class="masthead-action__full" data-copy="wideOverview"></span><span class="masthead-action__compact" data-copy="wideCompact" aria-hidden="true"></span></button>
+            <button class="quiet-button" type="button" data-action="destinations" data-testid="open-destinations" data-copy-label="destinations" aria-expanded="false" aria-controls="destinations" aria-keyshortcuts="/"><span class="masthead-action__full" data-copy="destinations"></span><span class="masthead-action__compact" data-copy="destinationsCompact" aria-hidden="true"></span></button>
+          </nav>
+          <div class="observatory-masthead__notes">
+            <p class="space-map-hint" data-field="map-hint" data-copy="mapHint"></p>
+            <div class="status" id="status" data-testid="operation-feedback" role="status" aria-live="polite" aria-atomic="true"></div>
+          </div>
+        </header>
+        <section class="guide-card" id="target-guide" data-testid="target-guide" aria-labelledby="target-name">
+          <button class="quiet-button guide-card__hide" type="button" data-action="guide" data-testid="hide-guide" data-copy-label="hideGuide" aria-controls="target-guide" aria-expanded="true">×</button>
+          <div class="guide-card__space" aria-hidden="true"></div>
+          <div class="guide-card__content">
+          <div class="guide-card__header">
+          <p class="guide-card__eyebrow" data-field="eyebrow"></p>
+          <h1 class="guide-card__name" id="target-name" data-field="name"></h1>
+          <p class="guide-card__type" data-field="type"></p><p class="object-evidence" data-field="object-evidence"></p>
+          </div>
+          <div class="guide-tabs" data-testid="guide-tabs" role="tablist" data-copy-label="guideSections">
+            <button type="button" role="tab" id="guide-observe-tab" data-action="guide-view" data-guide-view="observe" data-testid="guide-observe" aria-controls="guide-observe-panel" aria-selected="true" data-copy="guideObserve"></button>
+            <button type="button" role="tab" id="guide-read-tab" data-action="map-details" data-guide-view="read" data-testid="map-details" aria-controls="observation-details" aria-selected="false" aria-expanded="false" tabindex="-1" data-copy="guideRead"></button>
+            <button type="button" role="tab" id="guide-related-tab" data-action="guide-view" data-guide-view="related" data-testid="guide-related" aria-controls="guide-related-panel" aria-selected="false" tabindex="-1" data-copy="guideRelated" hidden></button>
+          </div>
+          <div class="guide-card__body" role="region" aria-labelledby="target-name" tabindex="0" data-testid="body-reading">
+          <section id="guide-observe-panel" data-guide-panel="observe" role="tabpanel" aria-labelledby="guide-observe-tab">
+          <button class="route-guide" type="button" data-action="route-navigation" data-testid="route-guide" aria-controls="exploration-routes" hidden></button>
+          <p class="guide-card__text" data-field="invitation"></p>
+          <div class="guide-card__actions">
+            <button class="approach-button" type="button" data-action="system-navigation" data-testid="guide-system-members" data-copy="systemChoose" hidden></button>
+            <button class="quiet-button" type="button" data-action="system-inner-overview" data-testid="guide-inner-system" hidden></button>
+            <button class="quiet-button" type="button" data-action="system-overview" data-testid="guide-solar-overview" data-copy="systemOverview" hidden></button>
+            <button class="approach-button" type="button" data-action="approach" data-testid="approach-target"></button>
+            <button class="quiet-button" type="button" data-action="nearer" data-testid="zoom-in" data-copy="closer" hidden></button>
+            <button class="quiet-button" type="button" data-action="system-local-overview" data-testid="guide-local-system" hidden></button>
+          </div>
+          <section class="galaxy-regions" data-testid="galaxy-regions" aria-labelledby="galaxy-regions-heading" hidden>
+            <h3 id="galaxy-regions-heading" data-copy="galaxyRegions"></h3>
+            <p data-copy="galaxyRegionHint"></p>
+            <div class="galaxy-regions__choices" data-testid="galaxy-region-options"></div>
+            <button class="quiet-button" type="button" data-action="galaxy-whole" data-testid="galaxy-whole" data-copy="galaxyWhole" hidden></button>
+          </section>
+          <button class="next-observation" type="button" data-testid="next-observation" hidden><span class="next-observation__name" data-field="next-name"></span><span class="next-observation__reason" data-field="next-reason"></span></button>
+          </section>
+          <section id="observation-details" data-guide-panel="read" role="tabpanel" aria-labelledby="guide-read-tab" hidden>
+          <div class="space-context" data-testid="space-context" role="group" data-copy-label="spaceContext" hidden>
+            <p class="space-context__heading"><span data-copy="realLocation"></span><a data-field="space-source" data-testid="space-source" target="_blank" rel="noopener noreferrer"></a></p>
+            <p class="space-context__path" data-field="space-path" data-testid="space-path"></p>
+            <p class="space-context__reference" data-field="space-reference" data-testid="space-reference" hidden></p>
+            <p class="space-context__simulation" data-copy="spaceSimulation"></p>
+          </div>
+          <details class="guide-card__detail" data-testid="target-details">
+            <summary data-copy="about"></summary>
+            <p data-field="story"></p>
+            <p data-field="fact"></p>
+            <a data-field="source" data-testid="target-source" target="_blank" rel="noopener noreferrer"></a>
+            <a data-field="observation-source" data-testid="target-observation-source" target="_blank" rel="noopener noreferrer" hidden></a>
+            <a data-field="shape-source" data-testid="target-shape-source" target="_blank" rel="noopener noreferrer" hidden></a>
+            <a data-field="map-source" data-testid="target-map-source" target="_blank" rel="noopener noreferrer" hidden></a>
+            <p class="guide-card__disclosure" data-copy="representation"></p>
+          </details>
+            <button class="quiet-button" type="button" data-action="terrain" data-copy="terrain" data-testid="guide-observe-terrain" hidden></button>
+          </section>
+          <section id="guide-related-panel" data-guide-panel="related" role="tabpanel" aria-labelledby="guide-related-tab" hidden>
+            <p class="guide-panel__hint" data-copy="relatedHint"></p>
+            <input class="related-search" type="search" maxlength="80" autocomplete="off" spellcheck="false" data-testid="related-search" data-copy-label="relatedSearch" data-copy-placeholder="relatedSearch" />
+            <div class="body-relations" data-testid="body-relations" role="group" hidden></div>
+            <p class="guide-panel__hint" data-testid="related-empty" data-copy="noResults" role="status" hidden></p>
+          </section>
+          </div>
+          </div>
+        </section>
+        <button class="quiet-button guide-restore" type="button" data-action="guide" data-testid="restore-guide" data-copy="showGuide" aria-controls="target-guide" aria-expanded="false" hidden></button>
+        <section class="destination-panel" id="destinations" data-testid="destinations" aria-labelledby="destinations-heading" hidden>
+          <div class="destination-browse">
+          <div class="destination-browse__heading">
+          <h2 class="destination-panel__heading" id="destinations-heading" data-copy="destinations"></h2><button class="explorer-close quiet-button" type="button" data-action="destinations" data-testid="close-destinations" data-copy-label="closeExplorer">×</button>
+          <button class="quiet-button" type="button" data-action="route-navigation" data-testid="navigation-routes" data-copy="routes" aria-controls="exploration-routes" aria-expanded="false"></button>
+          <button class="quiet-button" type="button" data-action="system-navigation" data-testid="navigation-system" data-copy="solarFamily" aria-controls="solar-navigation" aria-expanded="false"></button>
+          <button class="quiet-button" type="button" data-action="dynamics" data-testid="navigation-dynamics" data-copy="dynamics" data-copy-label="sceneMotion" aria-controls="destinations"></button>
+          <button class="quiet-button" type="button" data-action="browse-navigation" data-testid="navigation-browse" data-copy="browseBodies" hidden></button>
+          </div>
+          <div class="destination-query" data-testid="navigation-query">
+          <input class="destination-search" type="search" maxlength="80" autocomplete="off" spellcheck="false" data-testid="star-search" data-field="search" data-copy-label="search" />
+          <button class="quiet-button" type="button" data-action="destination-filters" data-testid="destination-filters-return" data-copy="refineDestinations" aria-controls="destination-filters"></button>
+          </div>
+          </div>
+          <div class="destination-content" data-testid="navigation-content">
+          <div id="destination-filters">
+          <div class="destination-regions" data-testid="destination-regions" role="group" data-copy-label="spaceScope"></div>
+          <div class="destination-categories" data-testid="destination-categories" role="group" data-copy-label="categories"></div>
+          </div>
+          <div data-testid="navigation-browser">
+          <div class="destination-view-filter" role="group" data-copy-label="viewFilter">
+            <button type="button" data-testid="browse-all-views" data-copy="allViews" aria-pressed="true"></button>
+            <button type="button" data-testid="browse-visible" aria-pressed="false"></button>
+          </div>
+          <p class="destination-view-hint" data-copy="viewDirectionHint"></p>
+          <p class="sr-only" data-field="search-count" role="status" aria-live="polite"></p>
+          <section data-testid="recent-views" aria-labelledby="recent-heading" hidden>
+            <h3 class="destination-section" id="recent-heading" data-copy="recent"></h3>
+            <p class="destination-session-hint" data-copy="recentHint"></p>
+            <div class="destination-list" data-field="recent-views"></div>
+          </section>
+          <div class="destination-result-heading">
+            <h3 class="destination-section" data-field="destination-scope"></h3>
+            <button class="destination-clear" type="button" data-action="clear-search" data-testid="clear-search" data-copy="clearSearch" hidden></button>
+          </div>
+          <div class="destination-list" data-field="destinations"></div>
+          <p class="destination-empty" data-testid="destination-empty" data-copy="noResults" hidden></p>
+          <p class="destination-search-hint" data-field="search-hint"></p>
+          <p class="destination-panel__note" data-copy="representation"></p>
+          </div>
+          <section class="system-navigation" id="solar-navigation" data-testid="solar-navigation" aria-labelledby="solar-heading" hidden>
+            <h3 class="destination-section" id="solar-heading" data-copy="systemHeading"></h3>
+            <p class="system-navigation__hint" data-copy="systemHint"></p>
+            <button class="system-navigation__overview" type="button" data-action="system-overview" data-testid="system-overview" data-copy="systemOverview"></button>
+            <button class="system-navigation__overview" type="button" data-action="system-inner-overview" data-testid="inner-system-overview" data-copy="innerSystemOpen" disabled></button>
+            <div class="destination-list" data-field="local-systems"></div>
+            <div class="destination-list" data-field="system-members"></div>
+            <p class="destination-panel__note" data-copy="systemNote"></p>
+          </section>
+          <section id="exploration-routes" data-testid="exploration-routes" aria-labelledby="routes-heading" hidden>
+            <h3 class="destination-section" id="routes-heading" data-copy="routeHeading"></h3>
+            <div class="destination-list" data-testid="route-list"></div>
+            <div data-testid="route-plan" hidden>
+              <button class="destination-clear" type="button" data-action="route-list" data-testid="route-list-back" data-copy="routeList"></button>
+              <h3 class="route-plan__name" id="route-plan-heading" data-testid="route-name" tabindex="-1"></h3>
+              <p class="route-plan__context" data-testid="route-context"></p>
+              <a class="route-plan__source" data-testid="route-source" target="_blank" rel="noopener noreferrer"></a>
+              <p class="route-plan__progress" data-testid="route-progress" role="status" aria-live="polite"></p>
+              <div class="route-actions">
+                <button class="approach-button" type="button" data-action="route-next" data-testid="route-next"></button>
+                <button class="quiet-button" type="button" data-action="route-leave" data-testid="route-leave" data-copy="routeLeave" hidden></button>
+              </div>
+              <div class="destination-list route-stops" data-testid="route-stops"></div>
+            </div>
+            <p class="destination-panel__note" data-copy="routeHint"></p>
+          </section>
+          <details class="scene-motion" data-testid="scene-motion-controls" hidden>
+            <summary data-copy="sceneMotion"></summary>
+            <fieldset data-testid="scene-motion-options"><legend class="sr-only" data-copy="sceneMotion"></legend>
+              <label><input type="radio" name="scene-motion" value="flow" data-testid="motion-flow" checked /><span data-motion-name="flow"></span></label>
+              <label><input type="radio" name="scene-motion" value="paused" data-testid="motion-paused" /><span data-motion-name="paused"></span></label>
+              <label><input type="radio" name="scene-motion" value="accelerated" data-testid="motion-accelerated" /><span data-motion-name="accelerated"></span></label>
+            </fieldset>
+            <p class="scene-motion__status" data-testid="scene-motion-feedback" role="status" aria-live="polite"></p>
+            <p class="scene-motion__hint" data-copy="sceneMotionHint"></p>
+          </details>
+          </div>
+        </section>
+        <section class="destination-peek" data-testid="destination-peek" aria-describedby="destination-peek-hint" hidden>
+          <div class="destination-peek__subject"><h2 class="destination-peek__name" data-testid="destination-peek-name" aria-live="polite" aria-atomic="true"></h2><p class="destination-peek__direction" data-testid="destination-peek-direction" role="status" aria-live="polite"></p></div>
+          <p class="sr-only" id="destination-peek-hint" data-copy="previewHint"></p>
+          <div class="destination-peek__actions"><button type="button" class="quiet-button" data-action="destination-peek-back" data-testid="destination-peek-back" data-copy="returnToResults"></button><button type="button" class="approach-button" data-action="destination-peek-travel" data-testid="destination-peek-travel" data-copy="previewTravel"></button></div>
+        </section>
+        <div class="observation-console" data-testid="observation-console">
+      <div class="scale-axis" id="scale-axis" data-testid="scale-axis" role="group">
+        <h2 class="scale-axis__heading sr-only" data-copy="scaleHeading"></h2>
+        <div class="scale-axis__body">
+          <div class="scale-axis__stages">
+            <button type="button" class="scale-axis__tick" data-level="Surface" data-testid="scale-Surface"><span class="scale-axis__full" data-scale-name aria-hidden="true"></span><span class="scale-axis__short" data-scale-short aria-hidden="true"></span></button>
+            <button type="button" class="scale-axis__tick" data-level="LocalSystem" data-testid="scale-LocalSystem"><span class="scale-axis__full" data-scale-name aria-hidden="true"></span><span class="scale-axis__short" data-scale-short aria-hidden="true"></span></button>
+            <button type="button" class="scale-axis__tick" data-level="LocalMap" data-testid="scale-LocalMap"><span class="scale-axis__full" data-scale-name aria-hidden="true"></span><span class="scale-axis__short" data-scale-short aria-hidden="true"></span></button>
+            <button type="button" class="scale-axis__tick" data-level="Regional" data-testid="scale-Regional"><span class="scale-axis__full" data-scale-name aria-hidden="true"></span><span class="scale-axis__short" data-scale-short aria-hidden="true"></span></button>
+            <button type="button" class="scale-axis__tick" data-level="Galactic" data-testid="scale-Galactic"><span class="scale-axis__full" data-scale-name aria-hidden="true"></span><span class="scale-axis__short" data-scale-short aria-hidden="true"></span></button>
+          </div>
+          <div class="scale-axis__rail">
+            <input class="scale-axis__slider" data-testid="scale-slider" type="range" min="0" max="1000" step="5" value="0" aria-orientation="horizontal" />
+            <span class="scale-axis__dot" aria-hidden="true"></span>
+          </div>
+        </div>
+        <p class="scale-axis__hint" data-copy="scaleHint"></p>
       </div>
-      <div class="status" id="status" aria-live="polite"></div>
+        <div class="view-controls" data-testid="view-controls" role="group" data-copy-label="viewTools">
+          <button class="quiet-button dynamics-toggle" type="button" data-action="dynamics" data-testid="open-dynamics" data-copy="dynamics" aria-expanded="false" aria-controls="destinations"></button>
+          <button class="quiet-button quality-toggle" type="button" data-action="quality" data-testid="open-quality" data-copy="quality" aria-haspopup="dialog" aria-controls="quality-panel"></button>
+          <button class="quiet-button" type="button" data-action="nearer" data-copy-label="zoomIn" data-testid="lens-in">+</button>
+          <button class="quiet-button" type="button" data-action="farther" data-copy-label="zoomOut" data-testid="zoom-out">−</button>
+          <button class="quiet-button" type="button" data-action="inspect" data-copy-label="inspectSurface" data-testid="inspect-surface" aria-pressed="false" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M5 15l4-5 3 3 3-5 4 7M7 5l3 3M14 17l2 2"/></svg></button>
+          <button class="quiet-button" type="button" data-action="terrain" data-copy-label="terrain" data-testid="observe-terrain" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M3 18c4-1 4-8 9-8s5 7 9 8M5 13c2-5 4-8 7-8s5 3 7 8M7 20c2-1 2-5 5-5s3 4 5 5"/></svg></button>
+          <button class="quiet-button" type="button" data-action="sunlit" data-copy-label="sunlit" data-testid="observe-sunlit" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2"/></svg></button>
+          <button class="quiet-button" type="button" data-action="capture" data-copy-label="capture" data-testid="capture-view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 6h4l2-3h4l2 3h4v14H4z"/><circle cx="12" cy="12" r="4"/></svg></button>
+        </div>
+        </div>
+
+        <button class="quiet-button galaxy-whole-control" type="button" data-action="galaxy-whole" data-testid="galaxy-whole-control" data-copy="galaxyWhole" hidden></button>
+        <dialog class="quality-panel" id="quality-panel" data-testid="quality-panel" aria-labelledby="quality-title">
+          <header class="quality-panel__header"><h2 id="quality-title" data-copy="qualityTitle"></h2><button class="quiet-button" type="button" data-action="close-quality" data-testid="close-quality" data-copy-label="closeQuality">×</button></header>
+          <p class="quality-panel__hint" data-copy="qualityHint"></p>
+          <fieldset data-testid="quality-options"><legend class="sr-only" data-copy="qualityTitle"></legend>
+            <label class="quality-option"><input type="radio" name="quality" value="safe" data-testid="quality-safe" /><span><strong data-quality-name="safe"></strong><small data-quality-description="safe"></small></span></label>
+            <label class="quality-option"><input type="radio" name="quality" value="standard" data-testid="quality-standard" /><span><strong data-quality-name="standard"></strong><small data-quality-description="standard"></small></span></label>
+            <label class="quality-option"><input type="radio" name="quality" value="immersive" data-testid="quality-immersive" /><span><strong data-quality-name="immersive"></strong><small data-quality-description="immersive"></small></span></label>
+          </fieldset>
+          <p class="quality-panel__feedback" data-testid="quality-feedback" role="status" aria-live="polite"></p>
+        </dialog>
+        <dialog class="capture-preview" data-testid="capture-preview" aria-labelledby="capture-title">
+          <header class="capture-preview__header"><h2 id="capture-title" data-copy="captureTitle"></h2><button class="quiet-button" type="button" data-action="close-capture" data-testid="close-capture" data-copy-label="closeCapture">×</button></header>
+          <img data-testid="observation-image" />
+          <footer class="capture-preview__actions"><p class="capture-preview__hint" data-copy="captureHint"></p><a class="approach-button" data-testid="download-observation" data-copy="download" download></a></footer>
+        </dialog>
+      </div>
+      <p class="sr-only" id="interaction-guide">Drag or use the arrow keys to orbit. Scroll or use plus and minus to zoom. Select a body to approach. Home resets the view. Escape cancels a flight.</p>
       <div class="debug" id="debug"></div>
-      <div class="unsupported" id="unsupported"></div>
+      <div class="unsupported" id="unsupported" role="alert"><div class="unsupported__text" id="unsupported-text"></div></div>
     </main>
 
     <script type="module">
-      const BUILD_VERSION = "unified-active-star-20260511j";
-      const cacheKey = `${BUILD_VERSION}-${Date.now().toString(36)}`;
+      const BUILD_VERSION = "cosmic-explore-20261010gu";
       const runtimeUrl = new URL("./assets/stars-observatory-runtime.js", window.location.href);
-      runtimeUrl.searchParams.set("v", cacheKey);
-
-      const status = document.getElementById("status");
-      const unsupported = document.getElementById("unsupported");
-
+      runtimeUrl.searchParams.set("v", BUILD_VERSION);
       try {
         const { bootStarsObservatory } = await import(runtimeUrl.href);
         bootStarsObservatory({
           root: document.getElementById("observatory"),
+          controls: document.getElementById("controls"),
           scene: document.getElementById("scene"),
           labels: document.getElementById("labels"),
           scaleAxis: document.getElementById("scale-axis"),
-          status: status,
+          instructions: document.getElementById("interaction-guide"),
+          status: document.getElementById("status"),
           debug: document.getElementById("debug"),
-          unsupported: unsupported
+          unsupported: document.getElementById("unsupported"),
+          unsupportedText: document.getElementById("unsupported-text")
         });
-      } catch (err) {
-        const message = err?.message || "Failed to load the star map runtime.";
-        if (status) {
-          status.textContent = message;
-          status.dataset.hidden = "false";
-        }
-        if (unsupported) {
-          unsupported.textContent = message;
-          unsupported.dataset.visible = "true";
-        }
+      } catch (error) {
+        const language = new URLSearchParams(location.search).get("lang") || navigator.language || "en";
+        const message = language.toLowerCase().startsWith("zh")
+          ? "观测台未能启动。请刷新页面重试。"
+          : "The observatory could not start. Please reload to try again.";
+        document.getElementById("observatory").dataset.state = "unavailable";
+        document.getElementById("scene").setAttribute("aria-busy", "false");
+        document.getElementById("unsupported-text").textContent = message;
+        document.getElementById("unsupported").dataset.visible = "true";
+        console.error("Observatory startup failed", error);
       }
     </script>
   </body>
